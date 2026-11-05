@@ -1,0 +1,11 @@
+### Get status of crypto updates = remaining tasks
+GET {{origin}}/admin/realms/encrypted-realm/crypto-update
+Authorization: Bearer {{$auth.token("keycloak-admin-auth")}}
+
+### Clear remaining crypto updates; active ones will still finish
+DELETE {{origin}}/admin/realms/encrypted-realm/crypto-update
+Authorization: Bearer {{$auth.token("keycloak-admin-auth")}}
+
+### Start a crypto update for all entities
+POST {{origin}}/admin/realms/encrypted-realm/crypto-update
+Authorization: Bearer {{$auth.token("keycloak-admin-auth")}}

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>de.spree.keycloak</groupId>
+        <artifactId>keycloak-integrity-provider</artifactId>
+        <version>2.0.10</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>docker-keychain-generator</artifactId>
+
+    <name>Keycloak :: Create Keychain generator image</name>
+    <description>Create Keychain generator image</description>
+
+    <properties>
+        <docker.java.image>cgr.dev/chainguard/jdk</docker.java.image>
+        <docker.name>zeta/zeta-guard/vau/keychain-generator</docker.name>
+        <docker.tag>latest</docker.tag>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/docker</directory>
+                <filtering>true</filtering>
+            </resource>
+
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.jkube</groupId>
+                <artifactId>kubernetes-maven-plugin</artifactId>
+                <version>1.18.1</version>
+
+                <executions>
+                    <execution>
+                        <id>docker-build</id>
+                        <phase>package</phase>
+
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <verbose>true</verbose>
+                    <logStdout>true</logStdout>
+                    <buildStrategy>docker</buildStrategy>
+
+                    <images>
+                        <image>
+                            <name>${docker.name}:${docker.tag}</name>
+
+                            <build>
+                                <contextDir>${project.build.outputDirectory}</contextDir>
+                                <dockerFile>${project.build.outputDirectory}/Dockerfile</dockerFile>
+                            </build>
+                        </image>
+                    </images>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+
+                <executions>
+                    <execution>
+                        <id>copy-plugins</id>
+                        <phase>prepare-package</phase>
+
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/libs</outputDirectory>
+
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>keychain-generator</artifactId>
+                                    <destFileName>spree-keychain-generator.jar</destFileName>
+                                    <classifier>fat</classifier>
+                                </artifactItem>
+                            </artifactItems>
+
+                            <overWriteReleases>true</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>keychain-generator</artifactId>
+        </dependency>
+    </dependencies>
+</project>
