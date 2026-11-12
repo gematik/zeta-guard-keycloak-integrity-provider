@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.spree.keycloak</groupId>
+        <artifactId>keycloak-integrity-provider</artifactId>
+        <version>2.0.10</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>spreelog-prod</artifactId>
+    <name>Keycloak :: Spreelog no-op</name>
+    <description>Production no-op logger</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>de.spree.keycloak</groupId>
+            <artifactId>commons-server</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-services</artifactId>
+        </dependency>
+    </dependencies>
+</project>
