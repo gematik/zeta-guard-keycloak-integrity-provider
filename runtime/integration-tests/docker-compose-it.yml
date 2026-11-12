@@ -1,0 +1,79 @@
+name: "keycloak-encryption"
+
+networks:
+  keycloak-network:
+    name: keycloak-network
+
+services:
+  keycloak-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: wasadmin
+      POSTGRES_PASSWORD: geheim
+    networks:
+      - keycloak-network
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: pg_isready -h localhost -p 5432 -U wasadmin -d keycloak
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  keycloak:
+    image: spree/keycloak/keycloak-encryption
+    environment:
+      PRINT_ENV: true
+      JAVA_LOCALE: -Duser.timezone=Europe/Berlin
+      JAVA_OPTS_APPEND: -ea
+
+      # Put Keycloak build options in the first build stage of the container image
+      KC_DB: postgres
+      KC_DB_URL: "jdbc:postgresql://keycloak-db:5432/keycloak"
+      KC_DB_USERNAME: wasadmin
+      KC_DB_PASSWORD: geheim
+      KC_BOOTSTRAP_ADMIN_USERNAME: wasadmin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: wasadmin
+      KC_HEALTH_ENABLED: true
+      KC_HOSTNAME: http://localhost:18080
+      KC_HTTP_ENABLED: true
+      KC_TRACING_ENABLED: true
+      SPREE_SCANNER_DELAY: "PT30M"
+      HSM_PROXY_ENDPOINT: "hsm-sim:50051"
+      HSM_PROXY_KEK_ID: "vau-db-kek-v1"
+      SPREE_ENCRYPTED_REALM: "encrypted-realm"
+      SPREE_BOOTSTRAP_INTERVAL: "PT20S"
+      SPREE_INTEGRITY_PROVIDER_ENABLED: "true"
+      SPREE_ENABLE_INTEGRITY_CHECK: "true"
+    env_file:
+      - ../conf/keychain.env
+
+    ports:
+      - "127.0.0.1:18787:8787" # debug port
+      - "127.0.0.1:18080:8080" # api port
+    networks:
+      - keycloak-network
+    healthcheck:
+      # No curl in Keycloak 🙄
+      test: |
+        exec 3<>/dev/tcp/127.0.0.1/9000; printf "GET /health/ready HTTP/1.1\r\nhost: localhost:9000\r\nConnection: close\r\n\r\n" >&3;grep "HTTP/1.1 200 OK" <&3
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - ./target:/opt/keycloak/data/log
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    # Do not optimize in order to to load SPI build-time config changes (KC_* env) applied at startup
+    command: start --log="console,file" --import-realm --verbose
+  # DEBUG Logging
+  #--log-level=org.keycloak:DEBUG
+
+  hsm-sim:
+    image: ${HSM_SIM_IMAGE:-zeta/zeta-guard/ngx_pep/hsm_sim}:${HSM_SIM_TAG:-main}
+    command: ["--listen", "0.0.0.0:50051", "--keys-dir", "/etc/hsm_sim/keys"]
+    networks:
+      - keycloak-network

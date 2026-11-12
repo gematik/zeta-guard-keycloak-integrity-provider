@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>de.spree.keycloak</groupId>
+        <artifactId>keycloak-integrity-provider</artifactId>
+        <version>2.0.10</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>keychain-generator</artifactId>
+
+    <name>Keycloak :: Create Keychain generator</name>
+    <description>Create Keychain generator</description>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.1</version>
+
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>fat</shadedClassifierName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>com.fasterxml.jackson.module:jackson-module-kotlin</exclude>
+                                    <exclude>com.fasterxml.jackson.core:*</exclude>
+                                    <exclude>javax.annotation:javax.annotation-api</exclude>
+                                    <exclude>jakarta.activation:*</exclude>
+                                </excludes>
+                            </artifactSet>
+
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>de.spree.keycloak.crypto.keychaingenerator.KeychainGenerator</mainClass>
+                                </transformer>
+
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+
+                            <!-- https://stackoverflow.com/questions/64063528/failsafe-error-invalid-signature-file-digest-for-manifest-main-attributes-whe -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>de.gematik.zeta.zeta-guard</groupId>
+            <artifactId>java-hsm-proxy-provider</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>de.spree.keycloak</groupId>
+            <artifactId>commons-server</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>de.spree.keycloak</groupId>
+            <artifactId>spreelog-prod</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcutil-jdk18on</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-common</artifactId>
+            <version>${keycloak.version}</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
+</project>
