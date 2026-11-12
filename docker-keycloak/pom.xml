@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>de.spree.keycloak</groupId>
+        <artifactId>keycloak-integrity-provider</artifactId>
+        <version>2.0.10</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>docker-keycloak</artifactId>
+
+    <name>Keycloak :: Create pre-configured Keycloak image</name>
+    <description>Create pre-configured Keycloak image</description>
+
+    <properties>
+        <docker.keycloak.image>quay.io/keycloak/keycloak</docker.keycloak.image>
+        <docker.name>spree/keycloak/keycloak-encryption</docker.name>
+        <docker.tag>latest</docker.tag>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/docker</directory>
+                <filtering>true</filtering>
+            </resource>
+
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.jkube</groupId>
+                <artifactId>kubernetes-maven-plugin</artifactId>
+                <version>1.18.1</version>
+
+                <executions>
+                    <execution>
+                        <id>docker-build</id>
+                        <phase>package</phase>
+
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <verbose>true</verbose>
+                    <logStdout>true</logStdout>
+                    <buildStrategy>docker</buildStrategy>
+
+                    <images>
+                        <image>
+                            <name>${docker.name}:${docker.tag}</name>
+
+                            <build>
+                                <contextDir>${project.build.outputDirectory}</contextDir>
+                                <dockerFile>${project.build.outputDirectory}/Dockerfile</dockerFile>
+                            </build>
+                        </image>
+                    </images>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+
+                <executions>
+                    <execution>
+                        <id>copy-plugins</id>
+                        <phase>prepare-package</phase>
+
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/providers</outputDirectory>
+
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>encryption-provider</artifactId>
+                                    <destFileName>spree-encryption-provider.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>crypto-update-provider</artifactId>
+                                    <destFileName>spree-crypto-update-provider.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>bootstrap-provider</artifactId>
+                                    <destFileName>spree-bootstrap-provider.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>commons-server</artifactId>
+                                    <destFileName>spree-commons-server.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>spreelog-debug</artifactId>
+                                    <destFileName>spree-log.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>readiness-provider</artifactId>
+                                    <destFileName>spree-ready-provider.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>it-provider</artifactId>
+                                    <destFileName>it-provider.jar</destFileName>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>org.jetbrains.kotlin</groupId>
+                                    <artifactId>kotlin-stdlib</artifactId>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>org.jetbrains.kotlin</groupId>
+                                    <artifactId>kotlin-reflect</artifactId>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>io.arrow-kt</groupId>
+                                    <artifactId>arrow-core-jvm</artifactId>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>io.arrow-kt</groupId>
+                                    <artifactId>arrow-atomic-jvm</artifactId>
+                                </artifactItem>
+
+                                <artifactItem>
+                                    <groupId>com.fasterxml.jackson.module</groupId>
+                                    <artifactId>jackson-module-kotlin</artifactId>
+                                </artifactItem>
+                            </artifactItems>
+
+                            <overWriteReleases>true</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>copy-hsm-plugin</id>
+                        <phase>prepare-package</phase>
+
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/libs</outputDirectory>
+
+                            <excludeGroupIds>javax.annotation,org.slf4j,org.jetbrains.kotlin,com.google.android,com.google.code.findbugs</excludeGroupIds>
+                            <overWriteReleases>true</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>de.gematik.zeta.zeta-guard</groupId>
+            <artifactId>java-hsm-proxy-provider</artifactId>
+        </dependency>
+    </dependencies>
+</project>
