@@ -1,0 +1,670 @@
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>de.spree.keycloak</groupId>
+    <artifactId>keycloak-integrity-provider</artifactId>
+    <version>2.0.10</version>
+    <packaging>pom</packaging>
+
+    <name>Keycloak :: Encryption and integrity</name>
+    <description>Provide encryption and integrity checks for Keycloak</description>
+
+    <properties>
+        <kotlin.version>2.4.20</kotlin.version>
+        <arrow.version>2.1.2</arrow.version>
+        <keycloak.version>26.6.4</keycloak.version>
+        <quarkus.version>3.33.2.1</quarkus.version>
+        <hibernate.version>7.2.14.Final</hibernate.version>
+        <keycloak.admin.version>26.0.8</keycloak.admin.version>
+        <jackson.version>2.20.0</jackson.version>
+        <resteasy.version>6.2.12.Final</resteasy.version>
+        <bouncycastle.version>1.84</bouncycastle.version>
+        <java.version>21</java.version>
+
+        <kotlin.compiler.jvmTarget>${java.version}</kotlin.compiler.jvmTarget>
+        <kotlin.code.style>official</kotlin.code.style>
+
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Upgrade to 6.x causes TestEngine with ID 'junit-jupiter' failed to discover tests -->
+        <kotest.version>5.9.1</kotest.version>
+        <mockk.version>1.14.5</mockk.version>
+        <restassured.version>5.5.6</restassured.version>
+        <testcontainers.version>2.0.3</testcontainers.version>
+        <slf4j.version>2.0.17</slf4j.version>
+        <logback.version>1.4.14</logback.version>
+        <java-hsm-proxy-provider.version>1.0.2</java-hsm-proxy-provider.version>
+
+        <spotless.skip>true</spotless.skip> <!-- Override on command -->
+        <ktfmt.skip>true</ktfmt.skip> <!-- Override on command -->
+
+        <spotless.version>3.0.0</spotless.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-bom</artifactId>
+                <version>${kotlin.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak.bom</groupId>
+                <artifactId>keycloak-bom-parent</artifactId>
+                <version>${keycloak.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-bom</artifactId>
+                <version>${quarkus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-debug-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-debug-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcutil-debug-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-bom</artifactId>
+                <version>${kotest.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.gematik.zeta.zeta-guard</groupId>
+                <artifactId>java-hsm-proxy-provider</artifactId>
+                <version>${java-hsm-proxy-provider.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-bom</artifactId>
+                <version>${slf4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib</artifactId>
+                <version>${kotlin.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-reflect</artifactId>
+                <version>${kotlin.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-hibernate7</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.arrow-kt</groupId>
+                <artifactId>arrow-core-jvm</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.arrow-kt</groupId>
+                <artifactId>arrow-atomic-jvm</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-core</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-quarkus-server</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-crypto-default</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-admin-client</artifactId>
+                <version>${keycloak.admin.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-model-jpa</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-services</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-server-spi</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-server-spi-private</artifactId>
+                <version>${keycloak.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jboss.resteasy</groupId>
+                <artifactId>resteasy-core</artifactId>
+                <version>${resteasy.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>4.5.14</version>
+                <scope>provided</scope>
+
+                <exclusions>
+                    <exclusion>
+                        <artifactId>commons-logging</artifactId>
+                        <groupId>commons-logging</groupId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-runner-junit5-jvm</artifactId>
+                <version>${kotest.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.kotest.extensions</groupId>
+                <artifactId>kotest-assertions-arrow-jvm</artifactId>
+                <version>2.0.0</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.kotest.extensions</groupId>
+                <artifactId>kotest-extensions-testcontainers</artifactId>
+                <version>2.0.1</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.mockk</groupId>
+                <artifactId>mockk-jvm</artifactId>
+                <version>${mockk.version}</version>
+                <scope>test</scope>
+
+                <!-- Avoid conflicts with Kotest: kotest TestEngine with ID 'junit-jupiter' failed to discover tests -->
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>junit</artifactId>
+                    </exclusion>
+
+                    <exclusion>
+                        <groupId>org.junit.jupiter</groupId>
+                        <artifactId>junit-jupiter</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${hibernate.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>2.6</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.module</groupId>
+                <artifactId>jackson-module-kotlin</artifactId>
+                <version>${jackson.version}</version>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>2.3.232</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>commons-server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>docker-keycloak</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>commons-server</artifactId>
+                <type>test-jar</type>
+                <scope>test</scope>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>keychain-generator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>encryption-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>it-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>readiness-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>crypto-update-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>bootstrap-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>integrity-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>spreelog-prod</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>de.spree.keycloak</groupId>
+                <artifactId>spreelog-debug</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-reflect</artifactId>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/kotlin</sourceDirectory>
+        <testSourceDirectory>src/test/kotlin</testSourceDirectory>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-maven-plugin</artifactId>
+                    <version>${kotlin.version}</version>
+
+                    <configuration>
+                        <compilerPlugins>
+                            <plugin>jpa</plugin>
+                            <plugin>all-open</plugin>
+                        </compilerPlugins>
+
+                        <jvmTarget>${maven.compiler.target}</jvmTarget>
+
+                        <pluginOptions>
+                            <option>all-open:annotation=AllOpen</option>
+                            <option>all-open:annotation=jakarta.persistence.Entity</option>
+                            <option>all-open:annotation=jakarta.persistence.Embeddable</option>
+                        </pluginOptions>
+                    </configuration>
+
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.jetbrains.kotlin</groupId>
+                            <artifactId>kotlin-maven-allopen</artifactId>
+                            <version>${kotlin.version}</version>
+                        </dependency>
+
+                        <dependency>
+                            <groupId>org.jetbrains.kotlin</groupId>
+                            <artifactId>kotlin-maven-noarg</artifactId>
+                            <version>${kotlin.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+
+                <executions>
+                    <execution>
+                        <id>enforce-property</id>
+                        <phase>initialize</phase>
+
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>${java.version}</version>
+                                    <message>JDK version >= ${maven.compiler.target} required</message>
+                                </requireJavaVersion>
+                            </rules>
+
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>test-compile</phase>
+
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.3</version>
+
+                <configuration>
+                    <environmentVariables>
+                        <SPREE_INTEGRITY_PROVIDER_ENABLED>true</SPREE_INTEGRITY_PROVIDER_ENABLED>
+                        <SPREE_ENABLE_INTEGRITY_CHECK>true</SPREE_ENABLE_INTEGRITY_CHECK>
+                        <SPREE_ENCRYPTED_REALM>encrypted-realm</SPREE_ENCRYPTED_REALM>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <version>3.5.3</version>
+
+                <executions>
+                    <execution>
+                        <phase>test</phase>
+
+                        <goals>
+                            <goal>report-only</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                            <goal>test-jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+
+                <configuration>
+                    <skip>${spotless.skip}</skip>
+
+                    <kotlin>
+                        <!-- These are the defaults, you can override if you want -->
+                        <includes>
+                            <include>src/main/kotlin/**/*.kt</include>
+                            <include>src/test/kotlin/**/*.kt</include>
+                        </includes>
+                        <licenseHeader>
+                            <content><![CDATA[/*-
+ * #%L
+ * keycloak-integrity-provider
+ * %%
+ * (C) tech@Spree GmbH, 2026, licensed for gematik GmbH
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * *******
+ *
+ * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
+ * #L%
+ */
+]]></content>  <!-- or <file>${project.basedir}/license-header</file> -->
+                        </licenseHeader>
+                    </kotlin>
+                </configuration>
+
+                <executions>
+                    <!-- order of theses exections matters for CI -->
+                    <execution>
+                        <id>license-headers</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+
+                        <configuration>
+                            <skip>${spotless.skip}</skip>
+                        </configuration>
+                    </execution>
+
+                    <!-- order of theses exections matters for CI -->
+                    <execution>
+                        <id>ktfmt</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+
+                        <configuration>
+                            <skip>${ktfmt.skip}</skip>
+
+                            <kotlin>
+                                <ktfmt>
+                                    <style>KOTLINLANG</style>
+                                    <maxWidth>150</maxWidth>
+                                    <blockIndent>2</blockIndent>
+                                    <removeUnusedImports>true</removeUnusedImports>
+                                </ktfmt>
+                            </kotlin>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <modules>
+        <module>commons-server</module>
+        <module>commons-server/spreelog-prod</module>
+        <module>commons-server/spreelog-debug</module>
+        <module>plugins/encryption-provider</module>
+        <module>plugins/it-provider</module>
+        <module>plugins/crypto-update-provider</module>
+        <module>plugins/readiness-provider</module>
+        <module>plugins/bootstrap-provider</module>
+        <module>docker-keycloak</module>
+        <module>runtime/integration-tests</module>
+    </modules>
+
+    <profiles>
+        <profile>
+            <id>keychain-generator</id>
+
+            <modules>
+                <module>keychain-generator</module>
+                <module>docker-keychain-generator</module>
+            </modules>
+        </profile>
+    </profiles>
+</project>

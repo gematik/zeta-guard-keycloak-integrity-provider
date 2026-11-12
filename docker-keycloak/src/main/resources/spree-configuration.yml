@@ -1,0 +1,311 @@
+#
+# WARNING: NOT SUITABLE FOR PRODUCTION !
+#
+# This configuration has been modified for development and testing purposes.
+#
+
+entities:
+
+  # Live Entities
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserEntity
+      encrypted_properties:
+        - name: email
+        - name: emailConstraint
+      ignored_properties:
+        - name: federatedIdentities
+        # do not ignore attributes for testing
+        # - name: attributes
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserAttributeEntity
+      encrypted_properties:
+        - name: value
+        - name: longValue
+      named_queries:
+        - query:
+            # This query is used in [org.keycloak.models.jpa.UserAdapter.removeAttribute] and causes an abandoned row checksum
+            name: deleteUserAttributesByNameAndUser
+            query_type: DELETE
+            check_query: true
+      is_volatile: true
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.FederatedIdentityEntity
+
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.CredentialEntity
+      encrypted_properties:
+        - name: credentialData
+        - name: secretData
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserRoleMappingEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.UserRoleMappingEntity$Key
+        properties:
+          - name: roleId
+          - name: user
+      named_queries:
+        - query:
+            # This query is executed when expired users are being removed
+            name: deleteUserRoleMappingsByUser
+            query_type: DELETE
+            check_query: true
+      is_volatile: true  # can fluctuate during user deletion
+      table_checksum_enabled: true  # removal has abuse potential
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientScopeClientMappingEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.ClientScopeClientMappingEntity$Key
+        properties:
+          - name: clientId
+          - name: clientScopeId
+      named_queries:
+        - query:
+            # This query is executed when expired clients are being removed
+            name: deleteClientScopeClientMappingByClient
+            query_type: DELETE
+            check_query: true
+        - query:
+            name: addClientScopeToAllClients
+            query_type: INSERT
+            check_query: true
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientEntity
+      encrypted_properties:
+        - name: secret
+      ignored_properties:
+        - name: attributes
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientAttributeEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.ClientAttributeEntity$Key
+        properties:
+          - name: client
+          - name: name
+      encrypted_properties:
+        - name: value
+      is_volatile: true   # updated on each token exchange
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RevokedTokenEntity
+      named_queries:
+        - query:
+            name: deleteExpiredRevokedTokenByIds
+            query_type: DELETE
+            check_query: true
+        - query:
+            name: insertRevokeTokenIfAbsent
+            query_type: INSERT
+            check_query: true
+      # integrity disabled for testing
+      # table_checksum_enabled: true  # removal has abuse potential
+      # NOTE: live refresh uses Infinispan, only flushed to DB for restart persistence
+
+
+  # Realm configuration, created only once
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RealmEntity
+      ignored_properties:
+        - name: components
+        - name: attributes
+      row_checksum_enabled: true    # enable row integrity for tests
+      table_checksum_enabled: true
+
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RealmAttributeEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.RealmAttributeEntity$Key
+        properties:
+          - name: realm
+          - name: name
+      encrypted_properties:
+        - name: value
+      is_volatile: true
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ComponentEntity
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ComponentConfigEntity
+      encrypted_properties:
+        - name: value
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.AuthenticationFlowEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.AuthenticationExecutionEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.AuthenticatorConfigEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RequiredActionProviderEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientScopeEntity
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientScopeAttributeEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.ClientScopeAttributeEntity$Key
+        properties:
+          - name: clientScope
+          - name: name
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ProtocolMapperEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RoleEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RoleAttributeEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.CompositeRoleEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.CompositeRoleEntity$Key
+        properties:
+          - name: childRole
+          - name: parentRole
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.IdentityProviderEntity
+      # enable integrity for tests
+      row_checksum_enabled: true
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.authorization.jpa.entities.ResourceServerEntity
+
+
+  # Server configuration, mostly static
+
+  - entity:
+      name: org.keycloak.storage.configuration.jpa.entity.ServerConfigEntity
+      encrypted_properties:
+        - name: value
+      row_checksum_enabled: true    # enable row integrity for tests
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.MigrationModelEntity
+      table_checksum_enabled: true
+
+  - entity:
+      name: org.keycloak.authorization.jpa.entities.ResourceEntity
+
+  - entity:
+      name: org.keycloak.authorization.jpa.entities.ResourceAttributeEntity
+
+
+  # Unused
+  # TODO: Remove this section in production code
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.RequiredCredentialEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.RequiredCredentialEntity$Key
+        properties:
+          - name: realm
+          - name: type
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserRequiredActionEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserFederationProviderEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserFederationMapperEntity
+  - entity:
+      name: org.keycloak.events.jpa.AdminEventEntity
+  - entity:
+      name: org.keycloak.events.jpa.EventEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientInitialAccessEntity
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.ClientScopeRoleMappingEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.ClientScopeRoleMappingEntity$Key
+        properties:
+          - name: clientScope
+          - name: role
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.DefaultClientScopeRealmMappingEntity
+      primary_key:
+        class_name: org.keycloak.models.jpa.entities.DefaultClientScopeRealmMappingEntity$Key
+        properties:
+          - name: clientScopeId
+          - name: realm
+
+  - entity:
+      name: org.keycloak.models.jpa.entities.GroupAttributeEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.GroupEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.GroupRoleMappingEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.IdentityProviderMapperEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.OrganizationDomainEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.OrganizationEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.OrganizationInvitationEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.RealmLocalizationTextsEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserConsentClientScopeEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserConsentEntity
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserGroupMembershipEntity
+  - entity:
+      name: org.keycloak.storage.jpa.entity.FederatedUserGroupMembershipEntity
+  - entity:
+      name: org.keycloak.authorization.jpa.entities.ScopeEntity
+  - entity:
+      name: org.keycloak.authorization.jpa.entities.PolicyEntity
