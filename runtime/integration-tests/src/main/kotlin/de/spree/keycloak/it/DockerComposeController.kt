@@ -46,7 +46,6 @@ class DockerComposeController : DockerController {
   override val kchost: String = "localhost"
   override val dbport: Int = 15432
   override val dbhost: String = "localhost"
-  override val standalone: Boolean = true
 
   override fun isStarted(): Boolean = docker.listContainersCmd().exec().isNotEmpty()
 

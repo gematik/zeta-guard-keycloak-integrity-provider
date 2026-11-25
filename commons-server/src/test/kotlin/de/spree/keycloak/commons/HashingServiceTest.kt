@@ -24,11 +24,10 @@
 package de.spree.keycloak.commons
 
 import de.spree.keycloak.commons.TestData.dataBytes
-import de.spree.keycloak.commons.crypto.Checksum
-import de.spree.keycloak.commons.crypto.HashingService
-import de.spree.keycloak.commons.crypto.hmac
-import de.spree.keycloak.commons.crypto.keychain.Keychain
-import de.spree.keycloak.commons.crypto.muhash.MuHash3072
+import de.spree.keycloak.crypto.Checksum
+import de.spree.keycloak.crypto.HashingService
+import de.spree.keycloak.crypto.keychain.Keychain
+import de.spree.keycloak.crypto.muhash.MuHash3072
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.matchers.ints.shouldBeGreaterThan
@@ -49,26 +48,10 @@ class HashingServiceTest : AbstractTest() {
 			objectUnderTest.verify("entity", checksum, dataBytes).shouldBeRight()
 		}
 
-		"should hash and verify with keychain successfully" {
-			val keychainId = keychainBundle.futureKeychain().keychainId.toByteArray()
-			val checksum = objectUnderTest.hashWith(keychainId, dataBytes).shouldBeRight()
-
-			checksum.hash shouldNotBe dataBytes
-			checksum.hash.size shouldBeGreaterThan 0
-			checksum.keychainId shouldBe keychainId
-
-			objectUnderTest.verify("entity", checksum, dataBytes).shouldBeRight()
-		}
-
-		"should not hash with unknown keychain" {
-			val keychainId = Keychain().keychainId.toByteArray()
-			objectUnderTest.hashWith(keychainId, dataBytes).shouldBeLeft().message shouldContain "Unresolvable Keychain ID"
-		}
-
 		"should not verify with unknown keychain" {
 			val unknownKeychain = Keychain()
 
-			val hash = hmac(unknownKeychain.hmacKey, dataBytes).shouldBeRight()
+			val hash = objectUnderTest.hashInternal(unknownKeychain, dataBytes).shouldBeRight()
 			val checksum = Checksum(unknownKeychain.keychainId.toByteArray(), hash)
 
 			objectUnderTest.verify("entity", checksum, dataBytes).shouldBeLeft().message shouldContain "Unresolvable Keychain ID"
@@ -101,17 +84,9 @@ class HashingServiceTest : AbstractTest() {
 
 		"finishing multi hash without modifications yields identity" {
 			val multi = objectUnderTest.init().shouldBeRight()
-			val result = objectUnderTest.finish(multi).shouldBeRight()
-			result.hash shouldBe MuHash3072().current()
-			result.checksum.keychainId shouldBe keychainBundle.currentKeychain().keychainId.toByteArray()
-			objectUnderTest.verify("entity", result.checksum, result.hash).shouldBeRight()
-		}
-
-		"multi hash is independent of the keychain" {
-			val multi = objectUnderTest.init().shouldBeRight()
-			objectUnderTest.insert(multi, dataBytes).shouldBeRight()
-
-			objectUnderTest.finish(multi).shouldBeRight().hash shouldBe MuHash3072().insert(dataBytes).current()
+			val checksum = objectUnderTest.finish(multi).shouldBeRight()
+			checksum.keychainId shouldBe keychainBundle.currentKeychain().keychainId.toByteArray()
+			checksum.hash shouldBe MuHash3072().current()
 		}
 
 		"can update and remove from multi hash" {
@@ -138,52 +113,23 @@ class HashingServiceTest : AbstractTest() {
 			val filled = objectUnderTest.finish(multi).shouldBeRight()
 			filled shouldNotBe empty
 
-			val multi2 = objectUnderTest.init(filled.hash, filled.checksum).shouldBeRight()
+			val multi2 = objectUnderTest.init(filled).shouldBeRight()
 			objectUnderTest.remove(multi2, dataBytes).shouldBeRight()
 			val done = objectUnderTest.finish(multi2).shouldBeRight()
 			done shouldBe empty
 		}
 
-		"restarting multi hash from other keychain finishes with current keychain" {
-			val keychainId = keychainBundle.futureKeychain().keychainId.toByteArray()
-			val hash = MuHash3072().insert(dataBytes).current()
-			val checksum = objectUnderTest.hashWith(keychainId, hash).shouldBeRight()
-
-			val multi = objectUnderTest.init(hash, checksum).shouldBeRight()
-			objectUnderTest.insert(multi, dataBytes).shouldBeRight()
-			val result = objectUnderTest.finish(multi).shouldBeRight()
-
-			result.checksum.keychainId shouldBe keychainBundle.currentKeychain().keychainId.toByteArray()
-			objectUnderTest.verify("entity", result.checksum, result.hash).shouldBeRight()
-		}
-
-		"cannot restart multi hash with tampered hash" {
-			val multi = objectUnderTest.init().shouldBeRight()
-			objectUnderTest.insert(multi, dataBytes).shouldBeRight()
-			val filled = objectUnderTest.finish(multi).shouldBeRight()
-			val tampered = MuHash3072(filled.hash).insert("tampered".toByteArray()).current()
-
-			objectUnderTest.init(tampered, filled.checksum).shouldBeLeft().message shouldContain "HMAC verification failed"
-		}
-
-		"cannot restart multi hash with only hash or checksum" {
-			val filled = objectUnderTest.finish(objectUnderTest.init().shouldBeRight()).shouldBeRight()
-
-			objectUnderTest.init(filled.hash, null).shouldBeLeft().message shouldContain "both or not at all"
-			objectUnderTest.init(null, filled.checksum).shouldBeLeft().message shouldContain "both or not at all"
-		}
-
 		"can verify multi hash against expected checksum" {
 			val multi = objectUnderTest.init().shouldBeRight()
 			objectUnderTest.insert(multi, dataBytes).shouldBeRight()
-			val expected = objectUnderTest.finish(multi).shouldBeRight().checksum
+			val expected = objectUnderTest.finish(multi).shouldBeRight()
 
 			val multi2 = objectUnderTest.init().shouldBeRight()
 			objectUnderTest.insert(multi2, dataBytes).shouldBeRight()
-			objectUnderTest.verify("entity", multi2, expected).shouldBeRight()
+			val actual = objectUnderTest.finish(multi2).shouldBeRight()
+			actual shouldBe expected
 
-			objectUnderTest.remove(multi2, dataBytes).shouldBeRight()
-			objectUnderTest.verify("entity", multi2, expected).shouldBeLeft().message shouldContain "HMAC verification failed"
+			objectUnderTest.verify("entity", multi2, expected).shouldBeRight()
 		}
 	}
 }

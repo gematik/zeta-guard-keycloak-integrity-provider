@@ -26,8 +26,7 @@ package de.spree.keycloak.integrity
 import de.spree.keycloak.commons.AbstractDao
 import de.spree.keycloak.commons.configuration.PrimaryKey
 import de.spree.keycloak.commons.configuration.clazz
-import de.spree.keycloak.commons.configuration.toJPAJoinClause
-import de.spree.keycloak.commons.configuration.toJPAWhereNullClause
+import de.spree.keycloak.commons.toObject
 import jakarta.persistence.EntityManager
 import jakarta.persistence.LockModeType
 import org.hibernate.jpa.HibernateHints.HINT_CACHEABLE
@@ -101,43 +100,34 @@ class RowChecksumDao(entityManager: EntityManager) : AbstractDao(entityManager) 
 				WHERE r.entityId IS NULL
 			"""
 					.trimIndent(),
-				String::class.java
+				String::class.java,
 			)
 			.setParameter("entityName", entityName)
 			.resultList
 
 	/** Find deleted entities by performing a left join between the [RowChecksum] table and the specified entity table. */
-	fun findAbandonedChecksumsByCompositeKey(entityName: String, primaryKey: PrimaryKey): List<RowChecksum> =
-		em()
-			.createQuery(
-				"""
-			SELECT r FROM RowChecksum r
-				LEFT JOIN $entityName e ON ${primaryKey.toJPAJoinClause("r", "e")}
-				WHERE ${primaryKey.toJPAWhereNullClause("e")} AND r.entityName = :entityName
-			""",
-				RowChecksum::class.java
-			)
-			.setParameter("entityName", entityName)
-			.resultList
+	fun findAbandonedChecksumsByCompositeKey(entityName: String, primaryKey: PrimaryKey): List<RowChecksum> {
+		val keyClass = primaryKey.clazz
+		val rowChecksums = findAllByEntityName(entityName).associateBy { it.entityId.toObject(keyClass) }.toMutableMap()
+		em().createQuery("SELECT e.id FROM $entityName e", keyClass)
+			.resultStream
+			.use { stream -> stream.forEach { rowChecksums.remove(it) } }
+
+		return rowChecksums.values.toList()
+	}
 
 	/**
 	 * Find extraneous entities by performing a left join between the specified entity table and the [RowChecksum] table.
 	 *
-	 * Avoids triggering the event listener mechanism [de.spree.keycloak.plugins.integrity.SpreeIntegrityValidationListener] by just returning the IDs
+	 * Avoids triggering the event listener mechanism [de.spree.keycloak.plugins.integrity.SpreeIntegrityValidationListener] by just return the IDs
 	 */
-	fun findExtraneousEntitiesByCompositeKey(entityName: String, primaryKey: PrimaryKey): List<Any> =
-		em()
-			.createQuery(
-				"""
-			SELECT e.id FROM $entityName e
-				LEFT JOIN RowChecksum r ON ${primaryKey.toJPAJoinClause("r", "e")}
-					AND r.entityName = :entityName
-				WHERE r.entityId IS NULL
-			""",
-				primaryKey.clazz
-			)
-			.setParameter("entityName", entityName)
-			.resultList
+	fun findExtraneousEntitiesByCompositeKey(entityName: String, primaryKey: PrimaryKey): List<Any> {
+		val keyClass = primaryKey.clazz
+		val checksumIds = findAllByEntityName(entityName).map { it.entityId.toObject(keyClass) }.toSet()
+		return em().createQuery("SELECT e.id FROM $entityName e", keyClass)
+			.resultStream
+			.use { stream -> stream.filter { it !in checksumIds }.toList() }
+	}
 
 	/**
 	 * Persists a [RowChecksum] entity.

@@ -30,7 +30,6 @@ import jakarta.persistence.*
 
 const val CONFIG_FEATURES = "spree.config.features.enabled"
 const val CONFIG_CONVERSION_STATE = "spree.config.conversion.state"
-const val CONFIG_KEYCHAIN_ID = "spree.config.keychain.id"
 
 const val QUERY_LOAD_ALL = "Configuration.LOAD_ALL"
 const val QUERY_DELETE_BY_NAME = "Configuration.DELETE_BY_NAME"

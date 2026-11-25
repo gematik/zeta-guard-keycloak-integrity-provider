@@ -29,7 +29,7 @@ import de.spree.keycloak.commons.AbstractCDITest
 import de.spree.keycloak.commons.configuration.SpreeEntityConfiguration
 import de.spree.keycloak.commons.configuration.SystemState
 import de.spree.keycloak.commons.toEnum
-import de.spree.keycloak.commons.toYamlObject
+import de.spree.keycloak.commons.toObject
 import de.spree.keycloak.integrity.RowChecksum
 import de.spree.keycloak.integrity.TableChecksum
 import io.kotest.assertions.arrow.core.shouldBeRight
@@ -52,12 +52,13 @@ abstract class AbstractDatabaseIT : AbstractCDITest() {
     }
   }
 
-  protected fun <T> runJPA(block: (JpaEntityManagerFactory) -> T): T =
+  protected fun runJPA(block: (JpaEntityManagerFactory) -> Unit) =
       JpaEntityManagerFactory(DockerControllerFactory.instance.dbhost, DockerControllerFactory.instance.dbport, *entities.toTypedArray()).use {
         it.entityManager.transaction.begin()
 
         try {
-          block(it).also { _ -> it.entityManager.transaction.commit() }
+          block(it)
+          it.entityManager.transaction.commit()
         } finally {
           it.entityManager.close()
 
@@ -75,7 +76,7 @@ abstract class AbstractDatabaseIT : AbstractCDITest() {
     val DEPENDENT_ENTITIES = listOf(RealmLocalizationTextsEntity::class.java)
     val configuration: SpreeEntityConfiguration by lazy {
       val stream = AbstractDatabaseIT::class.java.getResourceAsStream("/spree-configuration.yml")!!
-      stream.toYamlObject<SpreeEntityConfiguration>()
+      stream.toObject<SpreeEntityConfiguration>()
     }
 
     val KEYCLOAK_ENTITIES: List<Class<*>> by lazy { configuration.entities.map { Class.forName(it.name) } }

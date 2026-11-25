@@ -27,8 +27,8 @@ import de.spree.keycloak.commons.configuration.SpreeEntityConfiguration
 import de.spree.keycloak.commons.configuration.SystemStateService
 import de.spree.keycloak.commons.configuration.realmName
 import de.spree.keycloak.commons.debug.SpreeLog
-import de.spree.keycloak.commons.crypto.CryptoService
-import de.spree.keycloak.commons.crypto.setupBouncyCastle
+import de.spree.keycloak.crypto.CryptoService
+import de.spree.keycloak.crypto.setupBouncyCastle
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.every
 import io.mockk.mockk
@@ -77,7 +77,7 @@ abstract class AbstractCDITest : FunSpec() {
 	}
 
 	companion object {
-		val spreeConfiguration = AbstractCDITest::class.java.getResourceAsStream("/spree-configuration.yml")!!.toYamlObject<SpreeEntityConfiguration>()
+		val spreeConfiguration = AbstractCDITest::class.java.getResourceAsStream("/spree-configuration.yml")!!.toObject<SpreeEntityConfiguration>()
 
 		init {
 			setupBouncyCastle()

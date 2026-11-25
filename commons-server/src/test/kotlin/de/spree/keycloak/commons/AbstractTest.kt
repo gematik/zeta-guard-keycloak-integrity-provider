@@ -23,10 +23,10 @@
  */
 package de.spree.keycloak.commons
 
-import de.spree.keycloak.commons.crypto.keychain.INVALID_KEYCHAIN
-import de.spree.keycloak.commons.crypto.keychain.Keychain
-import de.spree.keycloak.commons.crypto.keychain.KeychainBundle
-import de.spree.keycloak.commons.crypto.setupBouncyCastle
+import de.spree.keycloak.crypto.keychain.INVALID_KEYCHAIN
+import de.spree.keycloak.crypto.keychain.Keychain
+import de.spree.keycloak.crypto.keychain.KeychainBundle
+import de.spree.keycloak.crypto.setupBouncyCastle
 import io.kotest.core.spec.style.StringSpec
 
 var keychainBundle = TestKeychainBundle()

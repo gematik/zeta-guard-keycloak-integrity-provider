@@ -3,6 +3,13 @@
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
     <servers>
         <server>
+            <id>azdo-maven-mirror</id>
+
+            <username>${env.AZDO_MAVEN_USERNAME}</username>
+            <password>${env.AZDO_MAVEN_PAT}</password>
+        </server>
+
+        <server>
             <id>gitlab</id>
 
             <configuration>
@@ -15,6 +22,15 @@
             </configuration>
         </server>
     </servers>
+
+    <mirrors>
+        <mirror>
+            <id>azdo-maven-mirror</id>
+            <name>Azure Artifacts Mirror</name>
+            <url>${env.AZDO_MAVEN_MIRROR_URL}</url>
+            <mirrorOf>*,!gitlab</mirrorOf>
+        </mirror>
+    </mirrors>
 
     <profiles>
         <profile>

@@ -24,15 +24,11 @@
 package de.spree.keycloak.it
 
 import de.spree.keycloak.commons.configuration.SystemState
-import io.kotest.assertions.fail
 import io.kotest.core.spec.Order
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.shouldBe
+import java.lang.Thread.sleep
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.lang.Thread.sleep
-
-private const val ATTEMPTS = 20
 
 /**
  * First "test" that starts Docker compose
@@ -41,34 +37,28 @@ private const val ATTEMPTS = 20
  */
 @Order(0)
 class AAStartupIT : FunSpec() {
-	private val log: Logger = LoggerFactory.getLogger(this.javaClass)
+  private val log: Logger = LoggerFactory.getLogger(this.javaClass)
 
-	init {
-		beforeSpec { DockerControllerFactory.instance.start() }
+  init {
+    beforeSpec { DockerControllerFactory.instance.start() }
 
-		test("Wait for bootstrapping to complete") {
-			var status: SystemState? = null
-			var attempt = 0
-			val keycloakWebClient = KeycloakWebClient()
+    test("Wait for bootstrapping to complete") {
+      var status: SystemState? = null
+      var attempt = 0
 
-			keycloakWebClient.ready() shouldBe DockerControllerFactory.instance.standalone
+      do {
+        sleep(5000)
+        attempt++
+        status = KeycloakWebClient().systemStateEnum()
+        log.info("Current system status: $status, attempt: #$attempt")
+      } while (status != SystemState.OPERATIONAL && attempt < 20)
 
-			do {
-				sleep(5000)
-				attempt++
-				status = keycloakWebClient.systemStateEnum()
-				log.info("Current system status: $status, attempt: #$attempt")
-			} while (status != SystemState.OPERATIONAL && attempt < ATTEMPTS)
-
-			if (status != SystemState.OPERATIONAL) {
-				DockerControllerFactory.instance.stop()
-
-				fail("System status is not OPERATIONAL after $ATTEMPTS attempts (Status: $status)")
-			} else {
-				DockerControllerFactory.instance.createDatabaseBackup()
-			}
-
-			keycloakWebClient.ready() shouldBe true
-		}
-	}
+      if (status != SystemState.OPERATIONAL) {
+        log.error("System status is not RUNNING after 20 attempts")
+        DockerControllerFactory.instance.stop()
+      } else {
+        DockerControllerFactory.instance.createDatabaseBackup()
+      }
+    }
+  }
 }

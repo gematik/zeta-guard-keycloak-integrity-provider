@@ -39,7 +39,6 @@ import de.spree.keycloak.plugins.integrity.Action.*
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import org.hibernate.Session
-import org.hibernate.collection.spi.PersistentCollection
 import org.hibernate.event.spi.*
 import java.util.logging.Logger
 
@@ -112,8 +111,7 @@ class SpreeIntegrityValidationListener :
 	override fun onPostUpsert(event: PostUpsertEvent) {
 		val entityClass = event.entity.javaClass.simpleName
 		val entityId = event.id
-
-		error("Unsupported UPSERT on »$entityClass#$entityId«")
+		logger.error("Unsupported UPSERT on »$entityClass#$entityId«")
 	}
 
 	/**
@@ -224,22 +222,14 @@ class SpreeIntegrityValidationListener :
 		val parentEntity = event.affectedOwnerOrNull ?: return
 		val entityClass = parentEntity.javaClass
 		val eventType = event.javaClass.simpleName
-		val collectionName = event.collection.collectionName()
+		val collectionName = event.collection.role
 		val entityId = event.affectedOwnerIdOrNull
-		val ignoredProperty = entityConfiguration.isPropertyIgnored(entityAction.entityName, collectionName)
 
-		spreeLogger.info(
-			"[$eventType] Collection »$collectionName« on »${entityAction.entityName}#$entityId« was altered" + (if (ignoredProperty) " (IGNORED)" else "")
-		)
+		spreeLogger.info("[$eventType] Collection »$collectionName« on »${entityAction.entityName}#$entityId« was altered")
 
-		if (entityClass.isHandled() && !ignoredProperty) {
+		if (entityClass.isHandled()) {
 			checksumService.updateEntityChecksums(entityAction, parentEntity).onLeft { throw it }
 		}
-	}
-
-	private fun PersistentCollection<*>.collectionName() = when (val index = role?.lastIndexOf('.')) {
-		null -> "<unknown>"
-		else -> role!!.substring(index + 1)
 	}
 
 	/**
@@ -263,14 +253,14 @@ class SpreeIntegrityValidationListener :
 				.onRight { systemStateService.clearVolatileError(entityName, entityId) }
 				.recover { if (systemStateService.shouldIgnoreVolatileError(entityName, entityId)) Unit else raise(it) }
 				.onLeft {
-					if (it.isIntegrityException()) {
-						systemStateService.setSystemState(ERROR_ROW_CHECKSUM, it)
+				if (it.isIntegrityException()) {
+					systemStateService.setSystemState(ERROR_ROW_CHECKSUM, it)
 
-						throw RuntimeException("$IT_FAILED Checksum validation failed for »${entityClass.simpleName}#$entityId«", it)
-					} else {
-						throw RuntimeException("Checksum validation failed for »${entityClass.simpleName}#$entityId«", it)
-					}
+					throw RuntimeException("$IT_FAILED Checksum validation failed for »${entityClass.simpleName}#$entityId«", it)
+				} else {
+					throw RuntimeException("Checksum validation failed for »${entityClass.simpleName}#$entityId«", it)
 				}
+			}
 		}
 	}
 
@@ -300,7 +290,7 @@ class SpreeIntegrityValidationListener :
 		val parentEntity = affectedOwnerOrNull
 
 		return if (parentEntity != null) {
-			EntityAction(COLLECTION_UPDATE, parentEntity.javaClass.name, session, "Collection: »${collection.collectionName()}«")
+			EntityAction(COLLECTION_UPDATE, parentEntity.javaClass.name, session, "Collection: »${collection.role}«")
 		} else {
 			null
 		}

@@ -27,7 +27,7 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import de.spree.keycloak.commons.configuration.LOG_STATE_OPERATIONAL
 import de.spree.keycloak.commons.configuration.SystemState
-import de.spree.keycloak.commons.crypto.keychain.currentTime
+import de.spree.keycloak.crypto.keychain.currentTime
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.semconv.ServerAttributes
 import org.keycloak.models.KeycloakSession

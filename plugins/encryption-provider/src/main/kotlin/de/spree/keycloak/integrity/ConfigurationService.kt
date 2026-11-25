@@ -24,15 +24,11 @@
 package de.spree.keycloak.integrity
 
 import arrow.core.Either
-import arrow.core.Option
-import arrow.core.firstOrNone
-import arrow.core.raise.option
-import arrow.core.toOption
 import de.spree.keycloak.commons.logger
 import de.spree.keycloak.commons.toEnum
 import de.spree.keycloak.plugins.integrity.EntityAction
 import jakarta.enterprise.context.ApplicationScoped
-import java.util.UUID
+import jakarta.persistence.EntityManager
 
 /**
  * Guards against re-entrant configuration reads on the same thread, see [ConfigurationService.loadConfiguration].
@@ -88,14 +84,8 @@ open class ConfigurationService {
 		return conversionState
 	}
 
-	fun getKeychainId(entityAction: EntityAction): Option<UUID> = option {
-		val configuration = loadConfiguration(entityAction).bind()
-		val keychainId = configuration[CONFIG_KEYCHAIN_ID].bind().firstOrNone().bind()
-		UUID.fromString(keychainId).toOption().bind()
-	}
-
 	/**
-	 * Reads the configuration through a session of its own, see [EntityAction.spreeSession].
+	 * Reads the configuration through a session of its own, see [EntityAction.withIsolatedSession].
 	 *
 	 * [SpreeEncryptionAttributeConverter][de.spree.keycloak.plugins.encryption.jpa.SpreeEncryptionAttributeConverter] asks for the conversion state
 	 * while Hibernate is loading or flushing an entity, so this must not run on Keycloak's own session.
@@ -113,18 +103,20 @@ open class ConfigurationService {
 		loadingConfiguration.set(true)
 
 		try {
-				val configurationDao = createSpreeContextConfigurationDao(entityAction)
+			return entityAction.withIsolatedSession { entityManager ->
+				val configurationDao = createIsolatedConfigurationDao(entityManager)
 
 				if (!tableExists) { // check until table has been created
 					tableExists = configurationDao.configurationTableExists()
 				}
 
-			return if (tableExists) {
+				if (tableExists) {
 					configurationDao.loadConfiguration()
 				} else {
 					logger.warn("⚠️ Spree configuration table does not exist (yet)")
 					null
 				}
+			}
 		} finally {
 			loadingConfiguration.remove()
 		}
@@ -146,12 +138,7 @@ open class ConfigurationService {
 		features.forEach { configurationDao.addConfiguration(CONFIG_FEATURES, it.name) }
 	}
 
-	fun setKeychainId(entityAction: EntityAction, keychainId: UUID) = Either.catch {
-		val configurationDao = createSpreeContextConfigurationDao(entityAction)
-		configurationDao.deleteConfiguration(CONFIG_KEYCHAIN_ID)
-
-		configurationDao.addConfiguration(CONFIG_KEYCHAIN_ID, keychainId.toString())
-	}
+	protected open fun createIsolatedConfigurationDao(entityManager: EntityManager): ConfigurationDao = ConfigurationDao(entityManager)
 
 	protected open fun createSpreeContextConfigurationDao(entityAction: EntityAction): ConfigurationDao = ConfigurationDao(entityAction.spreeEntityManager)
 }

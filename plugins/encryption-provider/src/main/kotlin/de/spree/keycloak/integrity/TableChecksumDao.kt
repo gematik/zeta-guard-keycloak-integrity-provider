@@ -24,6 +24,7 @@
 package de.spree.keycloak.integrity
 
 import de.spree.keycloak.commons.AbstractDao
+import de.spree.keycloak.crypto.DBChecksum
 import jakarta.persistence.EntityManager
 import jakarta.persistence.LockModeType
 
@@ -61,10 +62,40 @@ class TableChecksumDao(entityManager: EntityManager) : AbstractDao(entityManager
 		em().remove(checksum)
 	}
 
+	/** Deletes checksum of entity. */
+	fun delete(entityName: String) {
+		em().createNamedQuery(QUERY_DELETE_TABLE_CHECKSUM).setParameter("entityName", entityName).executeUpdate()
+	}
+
 	/**
 	 * Retrieves row count for given entity name
 	 *
 	 * @return row count
 	 */
 	fun isTableEmpty(): Boolean = em().createNamedQuery(QUERY_TABLE_CHECKSUMS_EMPTY, Boolean::class.java).singleResult
+
+	fun updateChecksum(entityName: String, checksum: DBChecksum) {
+//		val lockKey = entityName.hashCode().toLong()     // Hash the entity name to a stable long key
+
+		// Transaction-level advisory lock — released automatically on commit/rollback
+		// No explicit unlock needed, no risk of leaked locks
+//
+//		Retry.executeWithBackoff(
+//			{
+//				val acquired = em().createNativeQuery("SELECT pg_try_advisory_xact_lock(:key)", Boolean::class.java)
+//					.setParameter("key", lockKey)
+//					.singleResult as Boolean? ?: false
+//
+//				if(!acquired) {
+//					throw RuntimeException("Lock $lockKey is not available")
+//				}
+//			},
+//			20, 1000
+//		)
+
+		em().createNamedQuery(QUERY_UPDATE_TABLE_CHECKSUM)
+			.setParameter("entityName", entityName)
+			.setParameter("checksum", checksum)
+			.executeUpdate()
+	}
 }

@@ -4,18 +4,18 @@
 
     <groupId>de.spree.keycloak</groupId>
     <artifactId>keycloak-integrity-provider</artifactId>
-    <version>2.0.10</version>
+    <version>2.0.4</version>
     <packaging>pom</packaging>
 
     <name>Keycloak :: Encryption and integrity</name>
     <description>Provide encryption and integrity checks for Keycloak</description>
 
     <properties>
-        <kotlin.version>2.4.20</kotlin.version>
+        <kotlin.version>2.3.21</kotlin.version>
         <arrow.version>2.1.2</arrow.version>
-        <keycloak.version>26.6.4</keycloak.version>
-        <quarkus.version>3.33.2.1</quarkus.version>
-        <hibernate.version>7.2.14.Final</hibernate.version>
+        <keycloak.version>26.6.3</keycloak.version>
+        <quarkus.version>3.27.2</quarkus.version>
+        <hibernate.version>7.2.6.Final</hibernate.version>
         <keycloak.admin.version>26.0.8</keycloak.admin.version>
         <jackson.version>2.20.0</jackson.version>
         <resteasy.version>6.2.12.Final</resteasy.version>
@@ -346,24 +346,6 @@
 
             <dependency>
                 <groupId>de.spree.keycloak</groupId>
-                <artifactId>readiness-provider</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>de.spree.keycloak</groupId>
-                <artifactId>crypto-update-provider</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>de.spree.keycloak</groupId>
-                <artifactId>bootstrap-provider</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>de.spree.keycloak</groupId>
                 <artifactId>integrity-provider</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -650,9 +632,6 @@
         <module>commons-server/spreelog-debug</module>
         <module>plugins/encryption-provider</module>
         <module>plugins/it-provider</module>
-        <module>plugins/crypto-update-provider</module>
-        <module>plugins/readiness-provider</module>
-        <module>plugins/bootstrap-provider</module>
         <module>docker-keycloak</module>
         <module>runtime/integration-tests</module>
     </modules>

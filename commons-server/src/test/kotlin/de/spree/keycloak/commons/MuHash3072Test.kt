@@ -23,7 +23,7 @@
  */
 package de.spree.keycloak.commons
 
-import de.spree.keycloak.commons.crypto.muhash.MuHash3072
+import de.spree.keycloak.crypto.muhash.MuHash3072
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

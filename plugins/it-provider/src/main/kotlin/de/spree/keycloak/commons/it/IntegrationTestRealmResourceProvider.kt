@@ -23,12 +23,11 @@
  */
 package de.spree.keycloak.commons.it
 
-import arrow.core.Either
 import de.spree.keycloak.commons.KeycloakError
 import de.spree.keycloak.commons.configuration.SystemStateService
 import de.spree.keycloak.commons.entityManager
 import de.spree.keycloak.commons.message
-import de.spree.keycloak.scanner.SpreeIntegrityScanner
+import de.spree.keycloak.integrity.SpreeIntegrityScanner
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.MediaType
@@ -51,7 +50,6 @@ const val RS_METHOD_ADD_ATTRIBUTES = "/{user-id}/addUserAttributes"
 const val RS_METHOD_ADDCLIENTSCOPETOALLCLIENTS = "addClientScopeToAllClients"
 const val RS_METHOD_START_SCAN = "scanTables"
 const val RS_METHOD_START_UPDATE = "updateTables"
-const val RS_METHOD_RUN_SCAN_CYCLE = "runScanCycle"
 const val RS_PATH_IT = "/it"
 
 @Path(RS_PATH_IT)
@@ -134,17 +132,7 @@ class IntegrationTestRealmResourceProvider : RealmResourceProvider {
   @Path(RS_METHOD_START_UPDATE)
   @Produces(MediaType.APPLICATION_JSON)
   fun startUpdate(): Response =
-    SpreeIntegrityScanner.runAllCryptoUpdates(keycloakSession)
-      .fold(
-        ifLeft = { errorResponse(it) },
-        ifRight = { Response.ok(systemStateService.currentSystemState()).build() },
-      )
-
-  @POST
-  @Path(RS_METHOD_RUN_SCAN_CYCLE)
-  @Produces(MediaType.APPLICATION_JSON)
-  fun runScanCycle(): Response =
-    Either.catch { SpreeIntegrityScanner.runScanCycle(keycloakSession) }
+    SpreeIntegrityScanner.runCryptoUpdate(keycloakSession)
       .fold(
         ifLeft = { errorResponse(it) },
         ifRight = { Response.ok(systemStateService.currentSystemState()).build() },

@@ -24,30 +24,31 @@
 package de.spree.keycloak.integrity
 
 import de.spree.keycloak.commons.configuration.TABLE_TABLE_CHECKSUM
-import de.spree.keycloak.commons.crypto.DBChecksum
-import de.spree.keycloak.commons.crypto.DBHash
+import de.spree.keycloak.crypto.DBChecksum
 import jakarta.persistence.*
 
+const val QUERY_UPDATE_TABLE_CHECKSUM = "TableChecksum.UPDATE_CHECKSUM"
 const val QUERY_TABLE_CHECKSUMS_EMPTY = "TableChecksum.CHECK_EMPTY"
+const val QUERY_DELETE_TABLE_CHECKSUM = "TableChecksum.DELETE_TABLE_CHECKSUM"
 
 const val COLUMN_ENTITY_NAME = "ENTITY_NAME"
-const val COLUMN_HASH = "HASH"
 const val COLUMN_CHECKSUM = "CHECKSUM"
 
 /**
  * Represents a checksum for a specific database table.
  *
- * This entity is used to verify the integrity of an entire table by storing a multiset hash over the IDs of all the table's entities,
- * plus an HMAC over that hash.
+ * This entity is used to verify the integrity of an entire table by storing a checksum that is a combination of all checksums of the table's
+ * entities.
  *
  * @property entityName The name of the entity table serving as primary key.
- * @property hash The (unkeyed) multiset hash over all entity IDs of the table, used as starting point for incremental updates.
- * @property checksum The HMAC over [hash], authenticating it.
+ * @property checksum The calculated checksum value for the table.
  */
 @Entity
 @Table(name = TABLE_TABLE_CHECKSUM, indexes = [Index(name = "IDX_ENTITY_NAME", columnList = COLUMN_ENTITY_NAME)])
 @NamedQueries(
-	NamedQuery(name = QUERY_TABLE_CHECKSUMS_EMPTY, query = "SELECT COUNT(*) = 0 FROM TableChecksum")
+	NamedQuery(name = QUERY_UPDATE_TABLE_CHECKSUM, query = """UPDATE TableChecksum t SET t.checksum = :checksum WHERE t.entityName = :entityName"""),
+	NamedQuery(name = QUERY_TABLE_CHECKSUMS_EMPTY, query = "SELECT COUNT(*) = 0 FROM TableChecksum"),
+	NamedQuery(name = QUERY_DELETE_TABLE_CHECKSUM, query = "DELETE FROM TableChecksum WHERE entityName = :entityName"),
 )
 @Suppress("JpaEntityWithValAttributesInspection")
 class TableChecksum(
@@ -55,11 +56,7 @@ class TableChecksum(
 	@Id @Column(name = COLUMN_ENTITY_NAME, length = 255, nullable = false, updatable = false)
 	val entityName: String,
 
-	/** The multiset hash value. */
-	@Column(name = COLUMN_HASH, length = 1024, nullable = false)
-	var hash: DBHash,
-
-	/** The HMAC over the hash value. */
+	/** The checksum value. */
 	@Column(name = COLUMN_CHECKSUM, length = 1024, nullable = false)
 	var checksum: DBChecksum,
 ) {
@@ -69,7 +66,7 @@ class TableChecksum(
 	 * Initializes the entity with empty strings. Should not be used directly.
 	 */
 	@Suppress("unused", "KotlinRedundantDefaultConstructorJpaCompilerPluginInspection")
-	constructor() : this("", "", "")
+	constructor() : this("", "")
 
 	/**
 	 * Checks if this [TableChecksum] is equal to another object.
@@ -84,7 +81,6 @@ class TableChecksum(
 		other as TableChecksum
 
 		if (entityName != other.entityName) return false
-		if (hash != other.hash) return false
 		if (checksum != other.checksum) return false
 
 		return true
@@ -95,12 +91,12 @@ class TableChecksum(
 	 *
 	 * @return A hash code value for this object.
 	 */
-	override fun hashCode() = (entityName.hashCode() * 31 + hash.hashCode()) * 31 + checksum.hashCode()
+	override fun hashCode() = entityName.hashCode() * 31 + checksum.hashCode()
 
 	/**
 	 * Returns a string representation of the object.
 	 *
 	 * @return A string representation of the object.
 	 */
-	override fun toString(): String = "TableChecksum(entityName='$entityName', hash='$hash', checksum='$checksum')"
+	override fun toString(): String = "TableChecksum(entityName='$entityName', checksum='$checksum')"
 }

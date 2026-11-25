@@ -31,13 +31,11 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier
 import com.fasterxml.jackson.databind.type.CollectionType
-import de.spree.keycloak.commons.EntityConverter.convertToMap
 import de.spree.keycloak.commons.configuration.SpreeEntityConfiguration
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityManager
@@ -45,7 +43,6 @@ import jakarta.persistence.PersistenceException
 import jakarta.persistence.Table
 import org.hibernate.Hibernate
 import org.keycloak.util.JsonSerialization
-import java.util.SortedMap
 
 /**
  * Internal service for mapping (Keycloak) JPA entities to a JSON representations.
@@ -84,12 +81,6 @@ object EntityConverter {
 		ensure(entity.javaClass.isKeycloakModelClass()) { IllegalArgumentException("»$entity« is no entity class") }
 
 		catchAll { mapper.writer().withAttribute(EntityManager::class.java, this@convertToJSON).writeValueAsString(entity) }
-	}
-
-	fun convertToMap(json: String): SortedMap<String, Any> {
-		val map = mapper.readValue(json, object : TypeReference<Map<String, Any>>() {}) as Map<String, Any>
-
-		return map.toSortedMap() // enforce stable order
 	}
 
 	/**
@@ -267,23 +258,6 @@ data class EntityId(val id: String, val idClass: Class<*> = String::class.java) 
 
 /** Write Entity as plain String or complex Key object */
 fun EntityId.toIdObject(): Any = if (idClass == String::class.java) id else id.toObject(idClass)
-
-/** Extract composite keys as map */
-fun EntityId.idAsMap(): Map<String, String> = if (idClass == String::class.java) {
-	error("Not supported on plain string")
-} else {
-	convertToMap(id).convertIdValues()
-}
-
-fun Map<String, Any>.convertIdValues(): SortedMap<String, String> = mapValues { entry ->
-	if (entry.value is String) entry.value as String else {
-		// Nested map
-		val nestedMap = entry.value as Map<String, String>
-
-		// Hard-coded "id" for now is sufficient for all known queries
-		nestedMap["id"]!!
-	}
-}.toSortedMap()
 
 /** Data class holding information about an entity: its ID, table name, and the entity object itself. */
 data class EntityInfo(val entityId: EntityId, val tableName: String, val entity: Any) {

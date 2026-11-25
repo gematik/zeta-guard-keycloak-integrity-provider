@@ -26,36 +26,20 @@ package de.spree.keycloak.plugins.encryption
 import arrow.core.getOrElse
 import de.spree.keycloak.commons.*
 import de.spree.keycloak.commons.EntityConverter.convertToJSON
-import de.spree.keycloak.commons.EntityConverter.lookupEntityInfo
-import de.spree.keycloak.commons.TestData.client1
-import de.spree.keycloak.commons.TestData.clientAttributeEntity
 import de.spree.keycloak.commons.TestData.user
-import de.spree.keycloak.commons.crypto.keychain.keychainId
-import de.spree.keycloak.commons.crypto.toChecksum
-import de.spree.keycloak.commons.crypto.toDatabaseRepresentation
-import de.spree.keycloak.commons.debug.EntityInfoWriter
-import de.spree.keycloak.integrity.RowChecksum
+import de.spree.keycloak.crypto.keychain.keychainId
+import de.spree.keycloak.crypto.toChecksum
+import de.spree.keycloak.crypto.toDatabaseRepresentation
 import de.spree.keycloak.integrity.RowChecksumDao
 import de.spree.keycloak.integrity.RowChecksumService
-import de.spree.keycloak.integrity.rowChecksumId
-import de.spree.keycloak.plugins.integrity.Action.INSERT
 import de.spree.keycloak.plugins.integrity.Action.LOAD
-import de.spree.keycloak.plugins.integrity.Action.UPDATE
 import de.spree.keycloak.plugins.integrity.EntityAction
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.mockk.Runs
-import io.mockk.clearMocks
-import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
 import org.jboss.logmanager.Logger
-import org.keycloak.models.jpa.entities.ClientAttributeEntity
-import org.keycloak.models.jpa.entities.UserEntity
 
 class RowChecksumServiceTest : AbstractMockTest() {
   private val entityInfo = EntityInfo(EntityId(user.id), "USER_ENTITY", user)
@@ -67,71 +51,11 @@ class RowChecksumServiceTest : AbstractMockTest() {
   }.apply {
     setValue("hashingService", hashingService, RowChecksumService::class.java)
     setValue("spreeLogger", Logger.getLogger("de.spree.keycloak"), RowChecksumService::class.java)
-    setValue("entityInfoWriter", EntityInfoWriter { _, _ -> }, RowChecksumService::class.java)
-    setValue("spreeConfiguration", spreeConfiguration, RowChecksumService::class.java)
   }
   private val data: String by lazy { entityManager.convertToJSON(user).getOrElse { throw it } }
   private val dataBytes by lazy { data.toByteArray() }
 
-  private val userAction by lazy { EntityAction(UPDATE, UserEntity::class.java.name, entityManager) }
-  private val userChecksum by lazy { objectUnderTest.calculateRowChecksum(entityInfo, userAction).getOrElse { throw it }.toDatabaseRepresentation() }
-
   init {
-    beforeTest {
-      clearMocks(rowChecksumDao)
-      every { rowChecksumDao.save(any()) } just Runs
-    }
-
-    test("Updating existing row checksum with unchanged value") {
-      val existing = RowChecksum(UserEntity::class.java.name, user.id, checksum = userChecksum)
-      every { rowChecksumDao.findForUpdate(entityInfo.rowChecksumId) } returns existing
-
-      objectUnderTest.updateEntityInfoChecksum(entityInfo, userAction).shouldBeRight() shouldBe false
-
-      existing.checksum shouldBe userChecksum
-      verify(exactly = 0) { rowChecksumDao.save(any()) }
-    }
-
-    test("Updating existing row checksum with changed value") {
-      val existing = RowChecksum(UserEntity::class.java.name, user.id, checksum = "outdated")
-      every { rowChecksumDao.findForUpdate(entityInfo.rowChecksumId) } returns existing
-
-      objectUnderTest.updateEntityInfoChecksum(entityInfo, userAction).shouldBeRight() shouldBe true
-
-      existing.checksum shouldBe userChecksum
-      verify(exactly = 0) { rowChecksumDao.save(any()) }
-    }
-
-    test("Creating new row checksum for entity with string ID") {
-      val checksum = slot<RowChecksum>()
-      every { rowChecksumDao.findForUpdate(entityInfo.rowChecksumId) } returns null
-      every { rowChecksumDao.save(capture(checksum)) } just Runs
-
-      objectUnderTest.updateEntityInfoChecksum(entityInfo, userAction).shouldBeRight() shouldBe true
-
-      checksum.captured.entityName shouldBe UserEntity::class.java.name
-      checksum.captured.entityId shouldBe user.id
-      checksum.captured.compositeId1 shouldBe null
-      checksum.captured.compositeId2 shouldBe null
-      checksum.captured.checksum shouldBe userChecksum
-    }
-
-    test("Creating new row checksum for entity with composite ID") {
-      val action = EntityAction(INSERT, ClientAttributeEntity::class.java.name, entityManager)
-      val clientAttributeInfo = entityManager.lookupEntityInfo(clientAttributeEntity).shouldBeRight()
-      val checksum = slot<RowChecksum>()
-      every { rowChecksumDao.findForUpdate(clientAttributeInfo.rowChecksumId) } returns null
-      every { rowChecksumDao.save(capture(checksum)) } just Runs
-
-      objectUnderTest.updateEntityInfoChecksum(clientAttributeInfo, action).shouldBeRight() shouldBe true
-
-      checksum.captured.entityName shouldBe ClientAttributeEntity::class.java.name
-      checksum.captured.entityId shouldBe clientAttributeInfo.id
-      checksum.captured.compositeId1 shouldBe client1.id // composite IDs are sorted by property name: client, name
-      checksum.captured.compositeId2 shouldBe clientAttributeEntity.name
-      checksum.captured.checksum shouldBe objectUnderTest.calculateRowChecksum(clientAttributeInfo, action).shouldBeRight().toDatabaseRepresentation()
-    }
-
     test("Calculating row checksum") {
       val checksum = objectUnderTest.calculateRowChecksum(entityInfo, EntityAction(LOAD, "UserEntity", entityManager)).shouldBeRight()
 
@@ -147,7 +71,7 @@ class RowChecksumServiceTest : AbstractMockTest() {
     test("Valid checksum") {
       val checksum = objectUnderTest.calculateRowChecksum(entityInfo, EntityAction(LOAD, "UserEntity", entityManager)).shouldBeRight()
 
-      objectUnderTest.validateChecksum(EntityAction(LOAD, "UserEntity", entityManager), checksum, entityInfo).shouldBeRight()
+      objectUnderTest.validateChecksum(EntityAction(LOAD, "UserEntity", entityManager), checksum, checksum, entityInfo).shouldBeRight()
     }
 
     test("Validation of checksum should fail if hash is tampered with") {
@@ -155,7 +79,7 @@ class RowChecksumServiceTest : AbstractMockTest() {
       val tamperedChecksum = checksum.copy(hash = dataBytes)
 
       objectUnderTest
-          .validateChecksum(EntityAction(LOAD, "UserEntity", entityManager), tamperedChecksum, entityInfo)
+          .validateChecksum(EntityAction(LOAD, "UserEntity", entityManager), tamperedChecksum, checksum, entityInfo)
           .shouldBeLeft()
           .message shouldContain "Row checksum mismatch"
     }
@@ -165,7 +89,7 @@ class RowChecksumServiceTest : AbstractMockTest() {
       val tamperedChecksum = checksum.copy(hash = dataBytes)
 
       objectUnderTest
-          .validateChecksum(EntityAction(LOAD, "UserEntity", entityManager), tamperedChecksum, entityInfo)
+          .validateChecksum(EntityAction(LOAD, "UserEntity", entityManager), tamperedChecksum, checksum, entityInfo)
           .shouldBeLeft()
           .message shouldContain "Row checksum mismatch"
     }

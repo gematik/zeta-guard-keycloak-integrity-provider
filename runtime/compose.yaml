@@ -46,20 +46,15 @@ services:
       KC_HEALTH_ENABLED: true
       KC_HOSTNAME: http://localhost:18080
       KC_HTTP_ENABLED: true
-      # SPREE_SCANNER_INTERVAL: "PT1M"
-      # SPREE_SCANNER_DELAY: "PT10M"
-      SPREE_SCANNER_INTERVAL: "PT10S"
-      SPREE_SCANNER_DELAY: "PT1M"
+      SPREE_SCANNER_INTERVAL: "PT1M"
+      SPREE_SCANNER_DELAY: "PT10M"
       HSM_PROXY_ENDPOINT: "hsm-sim:50051"
       HSM_PROXY_KEK_ID: "vau-db-kek-v1"
       SPREE_ENCRYPTED_REALM: "encrypted-realm"
       SPREE_BOOTSTRAP_INTERVAL: "PT20S"
-      # SPREE_FUTURE_KEYCHAIN_FILE: "/opt/keycloak/conf/keychain3.env"
       SPREE_KEYCHAIN_FILE: "/opt/keycloak/conf/keychain.env"
-      # SPREE_PREVIOUS_KEYCHAIN_FILE: "/opt/keycloak/conf/keychain2.env"
       SPREE_INTEGRITY_PROVIDER_ENABLED: "true"
       SPREE_ENABLE_INTEGRITY_CHECK: "true"
-      SPREE_AUTOMATIC_CRYPTO_UPDATE: "true"
     ports:
       - "127.0.0.1:18787:8787" # debug port
       - "127.0.0.1:18080:8080" # api port
@@ -67,8 +62,6 @@ services:
       - keycloak-encryption-network
     volumes:
       - ./conf/keychain.env:/opt/keycloak/conf/keychain.env
-      - ./conf/keychain2.env:/opt/keycloak/conf/keychain2.env
-      - ./conf/keychain3.env:/opt/keycloak/conf/keychain3.env
       - ./log:/opt/keycloak/data/log
     healthcheck:
       # No curl in Keycloak 🙄

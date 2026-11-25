@@ -28,8 +28,8 @@ import de.spree.keycloak.commons.TestData.clientAttributeEntity
 import de.spree.keycloak.commons.TestData.clientAttributeEntityKey
 import de.spree.keycloak.commons.TestData.user
 import de.spree.keycloak.commons.TestData.userAttribute
-import de.spree.keycloak.commons.crypto.HashingService
-import de.spree.keycloak.commons.crypto.setupBouncyCastle
+import de.spree.keycloak.crypto.HashingService
+import de.spree.keycloak.crypto.setupBouncyCastle
 import io.mockk.every
 import io.mockk.mockk
 import jakarta.persistence.EntityManager

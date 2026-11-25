@@ -26,7 +26,11 @@
 package de.spree.keycloak.plugins.encryption
 
 import de.spree.keycloak.commons.AbstractDatabaseTest
-import de.spree.keycloak.integrity.*
+import de.spree.keycloak.integrity.CONFIG_CONVERSION_STATE
+import de.spree.keycloak.integrity.ConfigurationDao
+import de.spree.keycloak.integrity.ConfigurationService
+import de.spree.keycloak.integrity.SpreeDatabaseConversionState
+import de.spree.keycloak.integrity.SpreeFeature
 import de.spree.keycloak.plugins.integrity.Action
 import de.spree.keycloak.plugins.integrity.EntityAction
 import io.kotest.assertions.arrow.core.shouldBeRight
@@ -36,6 +40,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.maps.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import jakarta.persistence.EntityManager
 import jakarta.persistence.Persistence
 
 class ConfigurationServiceTest : AbstractDatabaseTest() {
@@ -46,6 +51,7 @@ class ConfigurationServiceTest : AbstractDatabaseTest() {
 		beforeTest {
 			configurationDao = ConfigurationDao(entityManager)
 			configurationService = object : ConfigurationService() {
+				override fun createIsolatedConfigurationDao(entityManager: EntityManager) = configurationDao
 				override fun createSpreeContextConfigurationDao(entityAction: EntityAction) = configurationDao
 			}
 		}

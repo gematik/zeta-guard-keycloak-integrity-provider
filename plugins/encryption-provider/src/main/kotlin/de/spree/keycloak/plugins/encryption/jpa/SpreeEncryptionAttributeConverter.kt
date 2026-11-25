@@ -30,7 +30,7 @@ import de.spree.keycloak.commons.currentKeycloakSession
 import de.spree.keycloak.commons.debug.SpreeLog
 import de.spree.keycloak.commons.entityManager
 import de.spree.keycloak.commons.logger
-import de.spree.keycloak.commons.crypto.CryptoService
+import de.spree.keycloak.crypto.CryptoService
 import de.spree.keycloak.integrity.ConfigurationService
 import de.spree.keycloak.integrity.SpreeDatabaseConversionState
 import de.spree.keycloak.plugins.integrity.Action
@@ -165,8 +165,7 @@ class SpreeEncryptionAttributeConverter : UserType<String>, AttributeConverter<S
 			try {
 				return block()
 			} finally {
-				// Only the outermost call clears the flag: a nested block must not end the enclosing suspension early.
-				if (!suspendedBefore) conversionSuspended.remove()
+				if (suspendedBefore) conversionSuspended.set(true) else conversionSuspended.remove()
 			}
 		}
 	}

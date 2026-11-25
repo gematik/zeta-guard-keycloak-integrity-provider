@@ -38,6 +38,16 @@ open class EntityAction(val action: Action, val entityName: String, val keycloak
 
 	open val spreeEntityManager: EntityManager get() = spreeSession.unwrap(EntityManager::class.java)
 
+	/**
+	 * Runs [body] on a Hibernate session of its own, which is closed afterwards.
+	 *
+	 * Reads must not go through [keycloakEntityManager] when we are called from within a Hibernate callback, e.g. an attribute converter or a flush
+	 * event listener: a query on that session triggers an auto-flush of the very session that is currently loading or flushing an entity. Hibernate
+	 * then aborts with »collection owner not associated with session«, which fails the enclosing transaction.
+	 */
+	open fun <T> withIsolatedSession(body: (EntityManager) -> T): T =
+		keycloakEntityManager.createNewSession().use { body(it.unwrap(EntityManager::class.java)) }
+
 	fun runInTransaction(body: () -> Unit) = either {
 		spreeSession.use { session ->
 			val transaction = session.beginTransaction()

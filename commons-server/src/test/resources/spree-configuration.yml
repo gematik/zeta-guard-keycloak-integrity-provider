@@ -20,6 +20,10 @@ entities:
       encrypted_properties:
         - name: value
         - name: longValue
+      primary_key:
+        class_name: java.lang.String
+        properties:
+          - name: id
       named_queries:
         - query:
             # This query is used in [org.keycloak.models.jpa.UserAdapter.removeAttribute] and causes an abandoned row checksum
@@ -33,8 +37,8 @@ entities:
       primary_key:
         class_name: org.keycloak.models.jpa.entities.ClientScopeClientMappingEntity$Key
         properties:
-          - name: clientId
           - name: clientScopeId
+          - name: clientId
       named_queries:
         - query:
             # This query is executed when expired clients are being removed
@@ -53,11 +57,6 @@ entities:
 
   - entity:
       name: org.keycloak.models.jpa.entities.ClientAttributeEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.ClientAttributeEntity$Key
-        properties:
-          - name: client
-          - name: name
       encrypted_properties:
         - name: value
 
@@ -71,11 +70,6 @@ entities:
 
   - entity:
       name: org.keycloak.models.jpa.entities.RequiredCredentialEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.RequiredCredentialEntity$Key
-        properties:
-          - name: realm
-          - name: type
 
   - entity:
       name: org.keycloak.models.jpa.entities.FederatedIdentityEntity
@@ -100,11 +94,6 @@ entities:
 
   - entity:
       name: org.keycloak.models.jpa.entities.ClientScopeAttributeEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.ClientScopeAttributeEntity$Key
-        properties:
-          - name: clientScope
-          - name: name
 
   - entity:
       name: org.keycloak.models.jpa.entities.ProtocolMapperEntity
@@ -114,11 +103,6 @@ entities:
 
   - entity:
       name: org.keycloak.models.jpa.entities.RealmAttributeEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.RealmAttributeEntity$Key
-        properties:
-          - name: realm
-          - name: name
       encrypted_properties:
         - name: value
 
@@ -156,20 +140,8 @@ entities:
 
   - entity:
       name: org.keycloak.models.jpa.entities.ClientScopeRoleMappingEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.ClientScopeRoleMappingEntity$Key
-        properties:
-          - name: clientScope
-          - name: role
-
   - entity:
       name: org.keycloak.models.jpa.entities.DefaultClientScopeRealmMappingEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.DefaultClientScopeRealmMappingEntity$Key
-        properties:
-          - name: clientScopeId
-          - name: realm
-
   - entity:
       name: org.keycloak.models.jpa.entities.GroupAttributeEntity
   - entity:
@@ -196,20 +168,8 @@ entities:
       name: org.keycloak.models.jpa.entities.UserGroupMembershipEntity
   - entity:
       name: org.keycloak.models.jpa.entities.UserRoleMappingEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.UserRoleMappingEntity$Key
-        properties:
-          - name: roleId
-          - name: user
-      named_queries:
-        - query:
-            # This query is executed when expired users are being removed
-            name: deleteUserRoleMappingsByUser
-            query_type: DELETE
-            check_query: true
-      is_volatile: true  # can fluctuate during user deletion
-      table_checksum_enabled: true  # removal has abuse potential
-
+  - entity:
+      name: org.keycloak.models.jpa.entities.UserRoleMappingEntity
   - entity:
       name: org.keycloak.storage.jpa.entity.FederatedUserGroupMembershipEntity
   - entity:
@@ -222,11 +182,5 @@ entities:
       name: org.keycloak.authorization.jpa.entities.ResourceAttributeEntity
   - entity:
       name: org.keycloak.authorization.jpa.entities.ResourceEntity
-
   - entity:
       name: org.keycloak.models.jpa.entities.CompositeRoleEntity
-      primary_key:
-        class_name: org.keycloak.models.jpa.entities.CompositeRoleEntity$Key
-        properties:
-          - name: childRole
-          - name: parentRole

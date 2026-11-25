@@ -1,45 +1,13 @@
 <img align="right" width="250" height="47" src="docs/img/Gematik_Logo_Flag.png"/> <br/>
 
-# Release Notes Spree Integrity Provider (SIP)
+# Release Notes Keycloak Integrity Provider
 
-## Release 2.0.10
-
-### changed
-- **no rolling update** Split table checksums into separate MultiHash and HMAC to improve performance
-
-## Release 2.0.9
+## Release 2.0.4-1
 
 ### changed
-- Automatic crypto update is now configurable via environment variable
-  SPREE_AUTOMATIC_CRYPTO_UPDATE (default true)
-- Exclude nodes with outdated keys from participating in crypto update
 
-## Release 2.0.8
-
-### changed
-- Automatically starts crypto update on keychain change
-- Verifies crypto updates by repeating until no more changes
-
-## Release 2.0.7
-
-### changed
-- Composite keys are now stored in distinct columns in SPREE_ROW_CHECKSUM
-- According queries adapted
-- Delta script added
-
-## Release 2.0.6
-
-### changed
-- Refactored code/extract new modules bootstrap-provider, crypto-update-provider
-- readiness-provider: Provide REST endpoint for health checks
-- Recompute checksum of collection parent only when necessary
-- Rewrote queries for improved performance
-- Fixed various minor glitches
-
-## Release 2.0.5
-
-### changed
-- Used correct prime for group 15 in MuHash Implementation
+- Keychain generator image rebuilt on OpenJDK 27.0.1.1 (`cgr.dev/chainguard/jdk`, previously OpenJDK 26.0.1) because of
+  CVE-2026-114938; no code changes compared to 2.0.4
 
 ## Release 2.0.4
 

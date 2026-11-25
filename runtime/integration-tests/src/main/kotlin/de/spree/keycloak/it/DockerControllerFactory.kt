@@ -24,22 +24,20 @@
 package de.spree.keycloak.it
 
 interface DockerController {
-	val kcport: Int
-	val kchost: String
-	val dbport: Int
-	val dbhost: String
-	val standalone: Boolean
+  val kcport: Int
+  val kchost: String
+  val dbport: Int
+  val dbhost: String
 
   fun isStarted(): Boolean
 
-	fun start()
+  fun start()
 
-	fun stop()
+  fun stop()
 
-	fun resetDatabase()
+  fun resetDatabase()
 
-	fun createDatabaseBackup()
-
+  fun createDatabaseBackup()
 }
 
 const val TESTCONTAINERS = "testcontainers"
@@ -48,11 +46,11 @@ const val PROP_CONTROLLER_IMPL = "spree.docker.controller"
 
 @Suppress("unused")
 object DockerControllerFactory {
-	val instance: DockerController by lazy {
-		when (val property: String = System.getProperty(PROP_CONTROLLER_IMPL, TESTCONTAINERS)) {
-			TESTCONTAINERS -> TestContainerDockerController()
-			COMPOSE -> DockerComposeController()
-			else -> throw IllegalArgumentException("Unknown docker controller: $property")
-		}
-	}
+  val instance: DockerController by lazy {
+    when (val property: String = System.getProperty(PROP_CONTROLLER_IMPL, TESTCONTAINERS)) {
+      TESTCONTAINERS -> TestContainerDockerController()
+      COMPOSE -> DockerComposeController()
+      else -> throw IllegalArgumentException("Unknown docker controller: $property")
+    }
+  }
 }

@@ -25,11 +25,13 @@
 
 package de.spree.keycloak.it
 
-import de.spree.keycloak.commons.USER_ID
+import de.spree.keycloak.commons.*
 import de.spree.keycloak.commons.configuration.SystemState
-import de.spree.keycloak.commons.toBase64
-import de.spree.keycloak.commons.toObject
-import de.spree.keycloak.integrity.*
+import de.spree.keycloak.integrity.RowChecksum
+import de.spree.keycloak.integrity.RowChecksumDao
+import de.spree.keycloak.integrity.RowChecksumKeyId
+import de.spree.keycloak.integrity.TableChecksum
+import de.spree.keycloak.integrity.TableChecksumDao
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.Order
@@ -39,189 +41,189 @@ import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.contain
 import io.kotest.matchers.string.shouldContain
+import kotlin.text.toByteArray
 import org.keycloak.models.jpa.entities.UserEntity
 
 @Order(1)
 class IntegrityScanIT : AbstractDatabaseIT() {
-	init {
-		val keycloakWebClient = KeycloakWebClient()
-		val userId = RowChecksumKeyId(UserEntity::class.java.name, USER_ID)
+  init {
+    val keycloakWebClient = KeycloakWebClient()
+    val userId = RowChecksumKeyId(UserEntity::class.java.name, USER_ID)
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#%C3%84nderung-von-Daten-in-der-Integrit%C3%A4ts-Tabelle-(Entit%C3%A4ten)
-		test("Entity with tampered row checksum causes error") {
-			runJPA { jpa ->
-				val checksumService = RowChecksumDao(jpa.entityManager)
-				val checksum1 = checksumService.findByEntityId(userId).shouldNotBeNull()
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#%C3%84nderung-von-Daten-in-der-Integrit%C3%A4ts-Tabelle-(Entit%C3%A4ten)
+    test("Entity with tampered row checksum causes error") {
+      runJPA { jpa ->
+        val checksumService = RowChecksumDao(jpa.entityManager)
+        val checksum1 = checksumService.findByEntityId(userId).shouldNotBeNull()
 
-				checksum1.checksum = "TheQuickBrownFoxJumpsOverTheLazyDog".toByteArray().toBase64()
+        checksum1.checksum = "TheQuickBrownFoxJumpsOverTheLazyDog".toByteArray().toBase64()
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "validation failed"
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_ROW_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "validation failed"
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_ROW_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#%C3%84nderung-von-Daten-in-der-Integrit%C3%A4ts-Tabelle-(Entit%C3%A4ten)
-		test("Entity with tampered table checksum causes error") {
-			runJPA { jpa ->
-				val checksumService = TableChecksumDao(jpa.entityManager)
-				val checksum = checksumService.findByEntityName(UserEntity::class.java.name).shouldNotBeNull()
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#%C3%84nderung-von-Daten-in-der-Integrit%C3%A4ts-Tabelle-(Entit%C3%A4ten)
+    test("Entity with tampered table checksum causes error") {
+      runJPA { jpa ->
+        val checksumService = TableChecksumDao(jpa.entityManager)
+        val checksum = checksumService.findByEntityName(UserEntity::class.java.name).shouldNotBeNull()
 
-				checksum.checksum = "TheQuickBrownFoxJumpsOverTheLazyDog".toByteArray().toBase64()
+        checksum.checksum = "TheQuickBrownFoxJumpsOverTheLazyDog".toByteArray().toBase64()
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft()
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft()
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#L%C3%B6schen-von-Daten-aus-der-Integrit%C3%A4ts-Tabelle-(Tabellen)
-		test("Entity with deleted table checksum causes error") {
-			runJPA { jpa ->
-				val checksumService = TableChecksumDao(jpa.entityManager)
-				val checksum = checksumService.findByEntityName(UserEntity::class.java.name).shouldNotBeNull()
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#L%C3%B6schen-von-Daten-aus-der-Integrit%C3%A4ts-Tabelle-(Tabellen)
+    test("Entity with deleted table checksum causes error") {
+      runJPA { jpa ->
+        val checksumService = TableChecksumDao(jpa.entityManager)
+        val checksum = checksumService.findByEntityName(UserEntity::class.java.name).shouldNotBeNull()
 
-				jpa.entityManager.remove(checksum)
+        jpa.entityManager.remove(checksum)
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "No table checksum found"
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "No table checksum found"
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#%C3%84nderung-von-Daten-einer-Entit%C3%A4t
-		test("Entity manipulation is detected") {
-			runJPA { jpa ->
-				val user = jpa.entityManager.find(UserEntity::class.java, USER_ID)
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#%C3%84nderung-von-Daten-einer-Entit%C3%A4t
+    test("Entity manipulation is detected") {
+      runJPA { jpa ->
+        val user = jpa.entityManager.find(UserEntity::class.java, USER_ID)
 
-				user.firstName = "Torsten"
-				jpa.newTransaction()
-			}
+        user.firstName = "Torsten"
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "validation failed"
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_ROW_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "validation failed"
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_ROW_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#L%C3%B6schen-einer-Entit%C3%A4t
-		test("User deletion is detected") {
-			runJPA { jpa ->
-				val user = jpa.entityManager.find(UserEntity::class.java, USER_ID)
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#L%C3%B6schen-einer-Entit%C3%A4t
+    test("User deletion is detected") {
+      runJPA { jpa ->
+        val user = jpa.entityManager.find(UserEntity::class.java, USER_ID)
 
-				jpa.entityManager.createQuery("DELETE FROM UserRoleMappingEntity urmel WHERE urmel.user.id = :id").setParameter("id", user.id).executeUpdate()
-				jpa.entityManager.remove(user)
+        jpa.entityManager.createQuery("DELETE FROM UserRoleMappingEntity urmel WHERE urmel.user.id = :id").setParameter("id", user.id).executeUpdate()
+        jpa.entityManager.remove(user)
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "does not match entity count"
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "does not match entity count"
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#L%C3%B6schen-einer-Entit%C3%A4ta
-		test("User deletion is detected even if checksum table is manipulated, too") {
-			runJPA { jpa ->
-				val user = jpa.entityManager.find(UserEntity::class.java, USER_ID)
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#L%C3%B6schen-einer-Entit%C3%A4ta
+    test("User deletion is detected even if checksum table is manipulated, too") {
+      runJPA { jpa ->
+        val user = jpa.entityManager.find(UserEntity::class.java, USER_ID)
 
-				jpa.entityManager.createQuery("DELETE FROM UserRoleMappingEntity urmel WHERE urmel.user.id = :id").setParameter("id", user.id).executeUpdate()
-				jpa.entityManager.createQuery("DELETE FROM RowChecksum rc WHERE rc.entityId = :id").setParameter("id", user.id).executeUpdate()
-				jpa.entityManager.remove(user)
+        jpa.entityManager.createQuery("DELETE FROM UserRoleMappingEntity urmel WHERE urmel.user.id = :id").setParameter("id", user.id).executeUpdate()
+        jpa.entityManager.createQuery("DELETE FROM RowChecksum rc WHERE rc.entityId = :id").setParameter("id", user.id).executeUpdate()
+        jpa.entityManager.remove(user)
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan()
-				.shouldBeLeft().errorDescription should (contain("HMAC verification failed") or contain("does not match entity count"))
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription should (contain("Table checksum mismatch") or contain ("does not match entity count"))
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#Hinzuf%C3%BCgen-einer-Entit%C3%A4t
-		test("Adding a user is detected") {
-			runJPA { jpa ->
-				val checksumService = RowChecksumDao(jpa.entityManager)
-				val existingChecksum = checksumService.findByEntityId(userId).shouldNotBeNull()
-				val existingUser = jpa.entityManager.find(UserEntity::class.java, USER_ID)
-				val user =
-					UserEntity().apply {
-						id = "badguy"
-						username = "admin"
-						isEnabled = true
-						setEmail(existingUser.email, false)
-					}
-				val rowChecksum = RowChecksum(UserEntity::class.java.name, user.id, null, null, existingChecksum.checksum)
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#Hinzuf%C3%BCgen-einer-Entit%C3%A4t
+    test("Adding a user is detected") {
+      runJPA { jpa ->
+        val checksumService = RowChecksumDao(jpa.entityManager)
+        val existingChecksum = checksumService.findByEntityId(userId).shouldNotBeNull()
+        val existingUser = jpa.entityManager.find(UserEntity::class.java, USER_ID)
+        val user =
+            UserEntity().apply {
+              id = "badguy"
+              username = "admin"
+              isEnabled = true
+              setEmail(existingUser.email, false)
+            }
+        val rowChecksum = RowChecksum(UserEntity::class.java.name, user.id, existingChecksum.checksum)
 
-				jpa.entityManager.persist(user)
-				jpa.entityManager.persist(rowChecksum)
+        jpa.entityManager.persist(user)
+        jpa.entityManager.persist(rowChecksum)
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "Checksum validation failed"
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_ROW_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "Checksum validation failed"
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_ROW_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#Hinzuf%C3%BCgen-von-Daten-in-die-Integrit%C3%A4ts-Tabelle-(Entit%C3%A4ten)
-		test("Adding a row checksum is detected") {
-			runJPA { jpa ->
-				val checksumService = RowChecksumDao(jpa.entityManager)
-				val existingChecksum = checksumService.findByEntityId(userId).shouldNotBeNull()
-				val rowChecksum = RowChecksum(UserEntity::class.java.name, "badguy-id", null, null, existingChecksum.checksum)
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#Hinzuf%C3%BCgen-von-Daten-in-die-Integrit%C3%A4ts-Tabelle-(Entit%C3%A4ten)
+    test("Adding a row checksum is detected") {
+      runJPA { jpa ->
+        val checksumService = RowChecksumDao(jpa.entityManager)
+        val existingChecksum = checksumService.findByEntityId(userId).shouldNotBeNull()
+        val rowChecksum = RowChecksum(UserEntity::class.java.name, "badguy-id", existingChecksum.checksum)
 
-				jpa.entityManager.persist(rowChecksum)
+        jpa.entityManager.persist(rowChecksum)
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "does not match entity count"
-			keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
-		}
+      keycloakWebClient.startScan().shouldBeLeft().errorDescription shouldContain "does not match entity count"
+      keycloakWebClient.systemStateEnum() shouldBe SystemState.ERROR_TABLE_CHECKSUM
+    }
 
-		// https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#Hinzuf%C3%BCgen-von-Daten-in-der-Integrit%C3%A4ts-Tabelle-(Tabellen)
-		test("Adding a table checksum is ignored") {
-			runJPA { jpa ->
-				val checksumService = TableChecksumDao(jpa.entityManager)
-				val existingChecksum = checksumService.findByEntityName(UserEntity::class.java.name).shouldNotBeNull()
-				val tableChecksum = TableChecksum(TableChecksum::class.java.name, existingChecksum.hash, existingChecksum.checksum)
+    // https://wiki.tech.spree.de/wiki/spaces/120137/pages/628555793/Integrit+tspr+fung+-+Szenarien#Hinzuf%C3%BCgen-von-Daten-in-der-Integrit%C3%A4ts-Tabelle-(Tabellen)
+    test("Adding a table checksum is ignored") {
+      runJPA { jpa ->
+        val checksumService = TableChecksumDao(jpa.entityManager)
+        val existingChecksum = checksumService.findByEntityName(UserEntity::class.java.name).shouldNotBeNull()
+        val tableChecksum = TableChecksum(TableChecksum::class.java.name, existingChecksum.checksum)
 
-				jpa.entityManager.persist(tableChecksum)
+        jpa.entityManager.persist(tableChecksum)
 
-				jpa.newTransaction()
-			}
+        jpa.newTransaction()
+      }
 
-			keycloakWebClient.startScan().shouldBeRight().reponseObject.toObject<String>() shouldBe SystemState.OPERATIONAL.name
-		}
+      keycloakWebClient.startScan().shouldBeRight().reponseObject.toObject<String>() shouldBe SystemState.OPERATIONAL.name
+    }
 
-		test("Can perform crypto update") {
-			keycloakWebClient.startUpdate().shouldBeRight().reponseObject.toObject<String>() shouldBe SystemState.OPERATIONAL.name
-		}
-	}
+    test("Can perform crypto update") {
+      keycloakWebClient.startUpdate().shouldBeRight().reponseObject.toObject<String>() shouldBe SystemState.OPERATIONAL.name
+    }
+  }
 
-	//	inner class BackgroundLockingService : AutoCloseable {
-	//		private val signal = CountDownLatch(1)
-	//
-	//		fun start() = Thread {
-	//			println("Service running...")
-	//
-	//			runWithConnection { connection ->
-	//				val statement = connection.createStatement()
-	//				statement.executeUpdate("BEGIN;\nLOCK TABLE keycloak.public.$TABLE_TABLE_CHECKSUM IN ACCESS EXCLUSIVE MODE;")
-	//				// Do not COMMIT yet to keep lock alive
-	//
-	//				signal.await(20, TimeUnit.SECONDS)
-	//				statement.executeUpdate("ROLLBACK;")
-	//				println("Service shutting down...")
-	//			}
-	//		}.apply { isDaemon = true }.start()
-	//
-	//		fun stop() {
-	//			signal.countDown()
-	//		}
-	//
-	//		override fun close() {
-	//			stop()
-	//		}
-	//	}
+  //	inner class BackgroundLockingService : AutoCloseable {
+  //		private val signal = CountDownLatch(1)
+  //
+  //		fun start() = Thread {
+  //			println("Service running...")
+  //
+  //			runWithConnection { connection ->
+  //				val statement = connection.createStatement()
+  //				statement.executeUpdate("BEGIN;\nLOCK TABLE keycloak.public.$TABLE_TABLE_CHECKSUM IN ACCESS EXCLUSIVE MODE;")
+  //				// Do not COMMIT yet to keep lock alive
+  //
+  //				signal.await(20, TimeUnit.SECONDS)
+  //				statement.executeUpdate("ROLLBACK;")
+  //				println("Service shutting down...")
+  //			}
+  //		}.apply { isDaemon = true }.start()
+  //
+  //		fun stop() {
+  //			signal.countDown()
+  //		}
+  //
+  //		override fun close() {
+  //			stop()
+  //		}
+  //	}
 
 }

@@ -31,4 +31,4 @@ import java.io.InputStream
 /** Used to read [de.spree.keycloak.commons.configuration.SpreeEntityConfiguration] from YAML file */
 val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).registerKotlinModule()
 
-inline fun <reified T> InputStream.toYamlObject(): T = yamlMapper.readValue(this, T::class.java)
+inline fun <reified T> InputStream.toObject(): T = yamlMapper.readValue(this, T::class.java)

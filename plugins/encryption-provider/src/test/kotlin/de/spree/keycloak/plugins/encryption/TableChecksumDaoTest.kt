@@ -38,25 +38,37 @@ class TableChecksumDaoTest : AbstractDatabaseTest() {
 
 		beforeTest {
 			objectUnderTest = TableChecksumDao(entityManager)
-		}
 
-		test("check if empty") {
-			objectUnderTest.isTableEmpty() shouldBe true
-			objectUnderTest.save(TableChecksum(entityName = entityName, hash = "hash", checksum = "checksum"))
+			test("check if empty") {
+				objectUnderTest.isTableEmpty() shouldBe true
+				objectUnderTest.save(TableChecksum(entityName = entityName, checksum = "checksum"))
 
-			newTransaction()
-			objectUnderTest.isTableEmpty() shouldBe false
-		}
+				newTransaction()
+				objectUnderTest.isTableEmpty() shouldBe false
+			}
 
-		test("find and delete by entity id") {
-			val checksum = TableChecksum(entityName = entityName, hash = "hash", checksum = "checksum")
-			objectUnderTest.save(checksum)
+			test("find and delete by entity name") {
+				objectUnderTest.findByEntityName(entityName).shouldBeNull()
+				val checksum = TableChecksum(entityName = entityName, checksum = "checksum")
+				objectUnderTest.save(checksum)
 
-			newTransaction()
-			val tableChecksum = objectUnderTest.findByEntityName(entityName)!! shouldBe checksum
+				newTransaction()
+				objectUnderTest.findByEntityName(entityName) shouldBe checksum
 
-			objectUnderTest.delete(tableChecksum)
-			objectUnderTest.findByEntityName(entityName).shouldBeNull()
+				objectUnderTest.delete(entityName)
+				objectUnderTest.findByEntityName(entityName).shouldBeNull()
+			}
+
+			test("find and delete by entity id") {
+				val checksum = TableChecksum(entityName = entityName, checksum = "checksum")
+				objectUnderTest.save(checksum)
+
+				newTransaction()
+				val tableChecksum = objectUnderTest.findByEntityName(entityName)!! shouldBe checksum
+
+				objectUnderTest.delete(tableChecksum)
+				objectUnderTest.findByEntityName(entityName).shouldBeNull()
+			}
 		}
 	}
 }

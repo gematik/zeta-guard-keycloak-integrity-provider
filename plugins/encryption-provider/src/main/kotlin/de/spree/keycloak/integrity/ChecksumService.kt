@@ -30,7 +30,7 @@ import de.spree.keycloak.commons.EntityConverter.lookupEntityInfo
 import de.spree.keycloak.commons.SimpleSuccess
 import de.spree.keycloak.commons.configuration.SpreeEntityConfiguration
 import de.spree.keycloak.commons.tableChecksEnabled
-import de.spree.keycloak.commons.crypto.toChecksum
+import de.spree.keycloak.crypto.toChecksum
 import de.spree.keycloak.plugins.integrity.Action.*
 import de.spree.keycloak.plugins.integrity.EntityAction
 import io.quarkus.runtime.Startup
@@ -112,8 +112,9 @@ class ChecksumService {
 			val entityInfo = entityAction.spreeEntityManager.lookupEntityInfo(entity).bind()
 			val rowChecksum = rowChecksumService.loadRowChecksum(entityAction, entityInfo.rowChecksumId).bind()
 			val storedChecksum = rowChecksum.checksum.toChecksum().bind()
+			val currentChecksum = rowChecksumService.calculateRowChecksum(entityInfo, entityAction).bind()
 
-			rowChecksumService.validateChecksum(entityAction, storedChecksum, entityInfo).bind()
+			rowChecksumService.validateChecksum(entityAction, storedChecksum, currentChecksum, entityInfo).bind()
 		}.bind()
 	}.asEntityError(entityAction.entityName, "Verifying row checksum")
 }

@@ -28,14 +28,11 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import de.spree.keycloak.commons.ENV_CONFIGURATION_PATH
 import de.spree.keycloak.commons.ENV_REALM_NAME
 import de.spree.keycloak.commons.getEnvironment
-import de.spree.keycloak.commons.toYamlObject
+import de.spree.keycloak.commons.toObject
 import io.quarkus.runtime.Startup
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Produces
 import java.io.FileInputStream
-import kotlin.reflect.KProperty1
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.javaType
 
 /** The name of the database table used to store row-level checksums. */
 const val TABLE_ROW_CHECKSUM = "SPREE_ROW_CHECKSUM"
@@ -77,9 +74,6 @@ data class SpreeEntityConfiguration(@field:JsonProperty("entities") private val 
 
 	fun findPrimaryKeyInformation(entityName: String) = findEntity(entityName)?.primaryKey
 
-	fun isPropertyIgnored(entityName: String, propertyName: String) =
-		findEntity(entityName)?.ignoredProperties?.firstOrNull { it.name == propertyName } != null
-
 	fun isVolatileEntity(entityName: String): Boolean = findEntity(entityName)?.isVolatile ?: false
 }
 
@@ -96,7 +90,7 @@ class SpreeConfigurationProducer {
 		private val INSTANCE: SpreeEntityConfiguration by lazy {
 			val stream = FileInputStream(SPREE_CONFIGURATION_PATH)
 
-			stream.toYamlObject<SpreeEntityConfiguration>()
+			stream.toObject<SpreeEntityConfiguration>()
 		}
 	}
 }
@@ -145,9 +139,7 @@ data class PrimaryKey(
 	val className: String,
 	@field:JsonProperty("properties") //
 	val properties: List<PrimaryKeyProperty> = emptyList(),
-) {
-	fun properties() = properties.sortedBy { it.name } // Order must be stable
-}
+)
 
 val PrimaryKey.clazz: Class<*>
 	get() = Class.forName(className)
@@ -169,30 +161,3 @@ data class IgnoredPropertyConfiguration(val name: String)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class PrimaryKeyProperty(val name: String)
-
-fun PrimaryKey.toJPAWhereNullClause(entityTable: String): String {
-	val getters = getters()
-
-	return getters.joinToString(" OR ", prefix = "(", postfix = ")") {
-		val propertyPath = if (it.returnType.javaType.typeName == STRING) it.name else it.name + ".id"
-
-		"""$entityTable.id.$propertyPath IS NULL"""
-	}
-}
-
-fun PrimaryKey.toJPAJoinClause(rowChecksumTable: String, entityTable: String): String {
-	var i = 1
-
-	return getters().joinToString(" AND ", prefix = "(", postfix = ")") {
-		val compositeId = "compositeId${i++}"
-		val propertyPath = if (it.returnType.javaType.typeName == STRING) it.name else it.name + ".id"
-
-		"""$rowChecksumTable.$compositeId = $entityTable.id.$propertyPath"""
-	}
-}
-
-fun PrimaryKey.getters(): List<KProperty1<*, *>> {
-	val keyClass = Class.forName(className).kotlin
-
-	return properties().map { pk -> keyClass.memberProperties.first { it.name == pk.name } }
-}

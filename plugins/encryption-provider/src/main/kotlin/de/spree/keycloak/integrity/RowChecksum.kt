@@ -27,7 +27,7 @@ package de.spree.keycloak.integrity
 
 import de.spree.keycloak.commons.EntityInfo
 import de.spree.keycloak.commons.configuration.TABLE_ROW_CHECKSUM
-import de.spree.keycloak.commons.crypto.DBChecksum
+import de.spree.keycloak.crypto.DBChecksum
 import jakarta.persistence.*
 import java.io.Serializable
 
@@ -37,10 +37,6 @@ const val QUERY_DELETE_CHECKSUMS = "RowChecksum.QUERY_DELETE_CHECKSUMS"
 const val QUERY_LOAD_ROWS_BY_ENTITYNAME = "RowChecksum.LOAD_ROWS_BY_ENTITYNAME"
 
 const val QUERY_ROW_CHECKSUMS_EMPTY = "RowChecksum.CHECK_EMPTY"
-
-const val COLUMN_ENTITY_ID = "ENTITY_ID"
-const val COLUMN_COMPOSITE_ID1 = "COMPOSITE_ID1"
-const val COLUMN_COMPOSITE_ID2 = "COMPOSITE_ID2"
 
 /**
  * Represents a checksum for a specific row in a database table.
@@ -54,92 +50,81 @@ const val COLUMN_COMPOSITE_ID2 = "COMPOSITE_ID2"
  */
 @Entity
 @Table(
-	name = TABLE_ROW_CHECKSUM,
-	indexes = [Index(name = "IDX_ENTITY_NAME", columnList = COLUMN_ENTITY_NAME),
-		Index(name = "IDX_ENTITY_ID", columnList = COLUMN_ENTITY_ID),
-		Index(name = "IDX_ENTITY_NAME_ID", columnList = "$COLUMN_ENTITY_NAME,$COLUMN_ENTITY_ID"),
-		Index(name = "IDX_COMPOSITE_ID", columnList = "$COLUMN_ENTITY_NAME,$COLUMN_COMPOSITE_ID1,$COLUMN_COMPOSITE_ID2")],
+    name = TABLE_ROW_CHECKSUM,
+    indexes = [Index(name = "IDX_ENTITY_NAME", columnList = "ENTITY_NAME"), Index(name = "IDX_ENTITY_ID", columnList = "ENTITY_ID")],
 )
 @IdClass(RowChecksumKeyId::class)
 @NamedQueries(
-	NamedQuery(
-		name = QUERY_LOAD_ROWS_BY_ENTITYNAME,
-		query = """SELECT r FROM RowChecksum r WHERE r.entityName = :entityName ORDER BY r.entityId ASC""",
-	),
-	NamedQuery(
-		name = QUERY_DELETE_CHECKSUMS,
-		query = """DELETE FROM RowChecksum r WHERE r.id IN (:entityIds)""",
-	),
-	NamedQuery(name = QUERY_ROW_CHECKSUMS_EMPTY, query = "SELECT COUNT(*) = 0 FROM RowChecksum"),
+    NamedQuery(
+        name = QUERY_LOAD_ROWS_BY_ENTITYNAME,
+        query = """SELECT r FROM RowChecksum r WHERE r.entityName = :entityName ORDER BY r.entityId ASC""",
+    ),
+    NamedQuery(
+        name = QUERY_DELETE_CHECKSUMS,
+        query = """DELETE FROM RowChecksum r WHERE r.id IN (:entityIds)""",
+    ),
+    NamedQuery(name = QUERY_ROW_CHECKSUMS_EMPTY, query = "SELECT COUNT(*) = 0 FROM RowChecksum"),
 )
 @Suppress("JpaEntityWithValAttributesInspection")
 class RowChecksum(
-	/** The name of the entity class. */
-	@Id @Column(name = COLUMN_ENTITY_NAME, length = 255, nullable = false, updatable = false) //
-	val entityName: String,
+    /** The name of the entity class. */
+    @Id @Column(name = "ENTITY_NAME", length = 255, nullable = false, updatable = false) //
+    val entityName: String,
 
-	/** The string-based ID of the entity. */
-	@Id @Column(name = COLUMN_ENTITY_ID, length = 255, nullable = false, updatable = false) //
-	val entityId: String,
+    /** The ID of the entity. */
+    @Id @Column(name = "ENTITY_ID", length = 255, nullable = false, updatable = false) //
+    val entityId: String,
 
-	/** first part of the composite ID of the entity */
-	@Column(name = COLUMN_COMPOSITE_ID1, length = 255, nullable = true, updatable = false) //
-	val compositeId1: String? = null,
-
-	/** second part of the composite ID of the entity */
-	@Column(name = COLUMN_COMPOSITE_ID2, length = 255, nullable = true, updatable = false) //
-	val compositeId2: String? = null,
-
-	@Column(name = COLUMN_CHECKSUM, length = 1024, nullable = false) //
-	var checksum: DBChecksum,
+    /** The checksum value. */
+    @Column(name = "CHECKSUM", length = 1024, nullable = false) //
+    var checksum: DBChecksum,
 ) {
-	/**
-	 * No-argument constructor required by JPA.
-	 *
-	 * Initializes the entity with empty strings. Should not be used directly.
-	 */
-	@Suppress("unused", "KotlinRedundantDefaultConstructorJpaCompilerPluginInspection")
-	constructor() : this("", "", null, null, "")
+  /**
+   * No-argument constructor required by JPA.
+   *
+   * Initializes the entity with empty strings. Should not be used directly.
+   */
+  @Suppress("unused", "KotlinRedundantDefaultConstructorJpaCompilerPluginInspection") constructor() : this("", "", "")
 
-	/**
-	 * Checks if this [RowChecksum] is equal to another object.
-	 *
-	 * @param other The object to compare with.
-	 * @return `true` if the objects are equal, `false` otherwise.
-	 */
-	override fun equals(other: Any?): Boolean {
-		if (this === other) return true
-		if (javaClass != other?.javaClass) return false
+  /**
+   * Checks if this [RowChecksum] is equal to another object.
+   *
+   * @param other The object to compare with.
+   * @return `true` if the objects are equal, `false` otherwise.
+   */
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
 
-		other as RowChecksum
+    other as RowChecksum
 
-		if (entityName != other.entityName) return false
-		if (entityId != other.entityId) return false
-		if (checksum != other.checksum) return false
+    if (entityName != other.entityName) return false
+    if (entityId != other.entityId) return false
+    if (checksum != other.checksum) return false
 
-		return true
-	}
+    return true
+  }
 
-	/**
-	 * Returns a hash code value for the object.
-	 *
-	 * @return A hash code value for this object.
-	 */
-	override fun hashCode(): Int {
-		var result = entityName.hashCode()
-		result = 31 * result + entityId.hashCode()
-		result = 31 * result + checksum.hashCode()
-		return result
-	}
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return A hash code value for this object.
+   */
+  override fun hashCode(): Int {
+    var result = entityName.hashCode()
+    result = 31 * result + entityId.hashCode()
+    result = 31 * result + checksum.hashCode()
+    return result
+  }
 
-	/**
-	 * Returns a string representation of the object.
-	 *
-	 * @return A string representation of the object.
-	 */
-	override fun toString(): String {
-		return "RowChecksum(tableName='$entityName', entityId='$entityId', checksum='$checksum')"
-	}
+  /**
+   * Returns a string representation of the object.
+   *
+   * @return A string representation of the object.
+   */
+  override fun toString(): String {
+    return "RowChecksum(tableName='$entityName', entityId='$entityId', checksum='$checksum')"
+  }
 }
 
 /**
@@ -151,12 +136,12 @@ class RowChecksum(
  * @property entityId The ID of the entity.
  */
 data class RowChecksumKeyId(var entityName: String, var entityId: String) : Serializable {
-	/** No-argument constructor required by JPA. */
-	constructor() : this("", "")
+  /** No-argument constructor required by JPA. */
+  constructor() : this("", "")
 }
 
 val RowChecksum.rowChecksumId: RowChecksumKeyId
-	get() = RowChecksumKeyId(entityName, entityId)
+  get() = RowChecksumKeyId(entityName, entityId)
 
 val EntityInfo.rowChecksumId: RowChecksumKeyId
-	get() = RowChecksumKeyId(entityName, id)
+  get() = RowChecksumKeyId(entityName, id)

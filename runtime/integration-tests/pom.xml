@@ -5,7 +5,7 @@
     <parent>
         <groupId>de.spree.keycloak</groupId>
         <artifactId>keycloak-integrity-provider</artifactId>
-        <version>2.0.10</version>
+        <version>2.0.4</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -73,6 +73,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-client</artifactId>
+            <version>2.37</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
             <version>${testcontainers.version}</version>
@@ -122,16 +128,6 @@
         <dependency>
             <groupId>de.spree.keycloak</groupId>
             <artifactId>it-provider</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>de.spree.keycloak</groupId>
-            <artifactId>readiness-provider</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>de.spree.keycloak</groupId>
-            <artifactId>crypto-update-provider</artifactId>
         </dependency>
 
         <dependency>

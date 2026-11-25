@@ -108,6 +108,7 @@
         <class>de.spree.keycloak.integrity.RowChecksum</class>
         <class>de.spree.keycloak.integrity.TableChecksum</class>
         <class>de.spree.keycloak.integrity.Configuration</class>
+        <class>de.spree.keycloak.integrity.CryptoUpdate</class>
 
         <!-- Keycloak core entities -->
         <class>org.keycloak.models.jpa.entities.UserEntity</class>

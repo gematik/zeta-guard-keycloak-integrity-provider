@@ -31,14 +31,10 @@ import de.spree.keycloak.commons.EntityConverter.convertToJSON
 import de.spree.keycloak.commons.EntityConverter.lookupEntityInfo
 import de.spree.keycloak.commons.configuration.STRING
 import de.spree.keycloak.commons.configuration.SpreeEntityConfiguration
-import de.spree.keycloak.commons.crypto.Checksum
-import de.spree.keycloak.commons.crypto.DBChecksum
-import de.spree.keycloak.commons.crypto.HashingService
-import de.spree.keycloak.commons.crypto.setupBouncyCastle
-import de.spree.keycloak.commons.crypto.toDatabaseRepresentation
 import de.spree.keycloak.commons.debug.EntityInfoWriter
 import de.spree.keycloak.commons.debug.SpreeEntityInfoWriter
 import de.spree.keycloak.commons.debug.SpreeLog
+import de.spree.keycloak.crypto.*
 import de.spree.keycloak.plugins.integrity.EntityAction
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -48,7 +44,7 @@ import java.util.logging.Logger
  * Service responsible for calculating, validating, and managing entity checksums.
  *
  * This service handles the core logic for ensuring data integrity by generating checksums for entities, signing them, and verifying them against
- * stored values. It interacts with the [EntityConverter] to serialize entities, the [de.spree.keycloak.commons.crypto.HashingService] to calculate and verify hashes, and the
+ * stored values. It interacts with the [EntityConverter] to serialize entities, the [HashingService] to calculate and verify hashes, and the
  * [RowChecksumDao] to persist and retrieve checksums.
  */
 @ApplicationScoped
@@ -70,7 +66,6 @@ open class RowChecksumService {
 
 	/**
 	 * Calculates the checksum for a given entity.
-	 * Only used for tests.
 	 *
 	 * The process involves:
 	 * 1. Converting the entity to its JSON representation.
@@ -98,20 +93,18 @@ open class RowChecksumService {
 	 * This method verifies that the hash part of the stored checksum matches the hash part of the current checksum.
 	 *
 	 * @param storedChecksum The checksum retrieved from storage.
-	 * @param entityInfo Information about the entity being validated
+	 * @param currentChecksum The checksum calculated from the current state of the entity.
+	 * @param entityInfo Information about the entity being validated (used for error messaging).
 	 * @return An [Either] containing [Success] if validation passes, or a [Throwable] if it fails.
 	 */
 	internal fun validateChecksum(
 		action: EntityAction,
 		storedChecksum: Checksum,
+		currentChecksum: Checksum,
 		entityInfo: EntityInfo,
 	): Either<Throwable, Success> = either {
 		val storedHash = storedChecksum.hash
 		val actionName = "[$action]→VALIDATE"
-
-		val jsonRepresentation = action.spreeEntityManager.convertToJSON(entityInfo.entity).bind()
-		val bytes = jsonRepresentation.toByteArray()
-		val currentChecksum = hashingService.hashWith(storedChecksum.keychainId, bytes).bind()
 
 		spreeLogger.info(
 			"""
@@ -148,53 +141,29 @@ open class RowChecksumService {
 
 	/**
 	 * Calculates and updates (or inserts) the checksum for a single entity.
-	 * Also indicates if the checksum was changed.
 	 *
 	 * @param entityInfo The metadata and actual instance of the entity.
 	 * @param action The EntityAction context under which the checksum is updated.
-	 * @return An [Either] containing [Boolean] if updated/inserted successfully, or a [Throwable].
+	 * @return An [Either] containing [Success] if updated/inserted successfully, or a [Throwable].
 	 */
 	fun updateEntityInfoChecksum(entityInfo: EntityInfo, action: EntityAction) = either {
 		val checksum = calculateRowChecksum(entityInfo, action).bind()
 		val dbChecksum = checksum.toDatabaseRepresentation()
 		val rowChecksumDao = createSpreeContextRowChecksumDao(action)
-		val existingRowChecksum: RowChecksum? = catchAll { rowChecksumDao.findForUpdate(entityInfo.rowChecksumId) }
+		val existingRowChecksum: RowChecksum? = rowChecksumDao.findForUpdate(entityInfo.rowChecksumId)
 
-		return@either if (existingRowChecksum == null) {
-			val primaryKey =
-				spreeConfiguration.findPrimaryKeyInformation(action.entityName)
-					?: raise(IllegalStateException("No primary key information found for entity »${action.entityName}«."))
-
-			val currentRowChecksum = if (primaryKey.className == STRING) {
-				RowChecksum(entityName = entityInfo.entityName, entityId = entityInfo.id, compositeId1 = null, compositeId2 = null, checksum = dbChecksum)
-			} else {
-				val compositeIds = entityInfo.entityId.idAsMap().values.toList()
-
-				ensure(compositeIds.size == 2) { IllegalStateException("Composite ID of size ${compositeIds.size} not supported yet") }
-
-				RowChecksum(
-					entityName = entityInfo.entityName,
-					entityId = entityInfo.id,
-					checksum = dbChecksum,
-					compositeId1 = compositeIds[0],
-					compositeId2 = compositeIds[1]
-				)
-			}
-
+		if (existingRowChecksum == null) {
+			val currentRowChecksum = RowChecksum(entityName = entityInfo.entityName, entityId = entityInfo.id, checksum = dbChecksum)
 			logAction(action, false, entityInfo, "", dbChecksum)
 
 			rowChecksumDao.save(currentRowChecksum)
-
-			true
 		} else {
 			logAction(action, true, entityInfo, existingRowChecksum.checksum, dbChecksum)
 
-			val changed = existingRowChecksum.checksum != dbChecksum
-
 			existingRowChecksum.checksum = dbChecksum
-
-			changed
 		}
+
+		SimpleSuccess
 	}
 
 	private fun logAction(

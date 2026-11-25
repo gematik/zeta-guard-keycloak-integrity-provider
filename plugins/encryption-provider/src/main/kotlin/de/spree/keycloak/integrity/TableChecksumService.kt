@@ -28,11 +28,10 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import de.spree.keycloak.commons.*
 import de.spree.keycloak.commons.configuration.SpreeEntityConfiguration
-import de.spree.keycloak.commons.crypto.HashingService
-import de.spree.keycloak.commons.crypto.MultiChecksum
-import de.spree.keycloak.commons.crypto.toChecksum
-import de.spree.keycloak.commons.crypto.toDatabaseRepresentation
-import de.spree.keycloak.commons.crypto.toHash
+import de.spree.keycloak.crypto.Checksum
+import de.spree.keycloak.crypto.HashingService
+import de.spree.keycloak.crypto.toChecksum
+import de.spree.keycloak.crypto.toDatabaseRepresentation
 import de.spree.keycloak.plugins.integrity.Action.*
 import de.spree.keycloak.plugins.integrity.EntityAction
 import io.quarkus.runtime.Startup
@@ -67,10 +66,11 @@ class TableChecksumService {
 		SimpleSuccess
 	}
 
-	internal fun calculateTableChecksum(rowChecksums: List<RowChecksum>): Either<Throwable, MultiChecksum> = either {
+	internal fun calculateTableChecksum(rowChecksums: List<RowChecksum>): Either<Throwable, Checksum> = either {
 		val entityIds = rowChecksums.map { it.entityId.toByteArray() }
 		val multi = hashingService.init().bind()
 		hashingService.insert(multi, *entityIds.toTypedArray()).bind()
+		hashingService.finish(multi).bind()
 	}
 
 	/**
@@ -116,7 +116,7 @@ class TableChecksumService {
 		val multi = if (action.action == INITIALIZE || storedChecksum == null)
 			hashingService.init().bind()
 		else
-			hashingService.init(storedChecksum.hash.toHash().bind(), storedChecksum.checksum.toChecksum().bind()).bind()
+			hashingService.init(storedChecksum.checksum.toChecksum().bind()).bind()
 
 		entityIds.forEach { entityId ->
 			when (action.action) {
@@ -129,16 +129,13 @@ class TableChecksumService {
 		if (hashingService.isEmpty(multi).bind() && storedChecksum != null) {
 			tableChecksumDao.delete(storedChecksum)
 		} else {
-			val result = hashingService.finish(multi).bind()
-			val hash = result.hash.toBase64()
-			val checksum = result.checksum.toDatabaseRepresentation()
+			val checksum = hashingService.finish(multi).bind().toDatabaseRepresentation()
+			val tableChecksum = storedChecksum ?: TableChecksum(action.entityName, checksum)
 
 			if (storedChecksum == null) {
-				val tableChecksum = TableChecksum(action.entityName, hash, checksum)
 				tableChecksumDao.save(tableChecksum)
 			} else {
-				storedChecksum.hash = hash
-				storedChecksum.checksum = checksum
+				tableChecksumDao.updateChecksum(action.entityName, checksum)
 			}
 		}
 
@@ -159,7 +156,7 @@ class TableChecksumService {
 			?: raise(IllegalStateException("No table checksum found for entity »${action.entityName}«"))
 		val storedChecksum = storedTableChecksum.checksum.toChecksum().bind()
 
-		hashingService.verify(action.entityName, tableChecksum, storedChecksum).bind()
+		ensure(storedChecksum.hash.contentEquals(tableChecksum.hash)) { RuntimeException("Table checksum mismatch for »${action.entityName}«") }
 
 		SimpleSuccess
 	}.asEntityError(action.entityName, "Verifying table checksum")

@@ -24,7 +24,7 @@
 package de.spree.keycloak.commons
 
 import de.spree.keycloak.commons.TestData.dataBytes
-import de.spree.keycloak.commons.crypto.keychain.currentTime
+import de.spree.keycloak.crypto.keychain.currentTime
 import io.kotest.matchers.shouldBe
 import java.util.*
 
