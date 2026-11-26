@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
+
+    <changeSet id="1" author="Nathalie Selke">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="SPREE_ROW_CHECKSUM"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="SPREE_ROW_CHECKSUM">
+            <column name="ENTITY_NAME" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ENTITY_ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CHECKSUM" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="SPREE_ROW_CHECKSUM"
+                       columnNames="ENTITY_NAME, ENTITY_ID"
+                       constraintName="SPREE_ROW_CHECKSUM_PK"/>
+
+        <createIndex indexName="SPREE_ROW_CHECKSUM_INDEX" tableName="SPREE_ROW_CHECKSUM">
+            <column name="ENTITY_NAME"/>
+            <column name="ENTITY_ID"/>
+        </createIndex>
+
+        <createIndex indexName="IDX_ROW_ENTITY_NAME" tableName="SPREE_ROW_CHECKSUM">
+            <column name="ENTITY_NAME"/>
+        </createIndex>
+
+        <createIndex indexName="IDX_ROW_ENTITY_ID" tableName="SPREE_ROW_CHECKSUM">
+            <column name="ENTITY_ID"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2" author="Nathalie Selke">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="SPREE_TABLE_CHECKSUM"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="SPREE_TABLE_CHECKSUM">
+            <column name="ENTITY_NAME" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CHECKSUM" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="SPREE_TABLE_CHECKSUM"
+                       columnNames="ENTITY_NAME"
+                       constraintName="SPREE_TABLE_CHECKSUM_PK"/>
+
+        <createIndex indexName="IDX_TABLE_ENTITY_NAME" tableName="SPREE_TABLE_CHECKSUM">
+            <column name="ENTITY_NAME"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="7" author="Markus Dahm">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="SPREE_CONFIGURATION"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="SPREE_CONFIGURATION">
+            <column name="ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="NAME" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="VALUE" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="SPREE_CONFIGURATION"
+                       columnNames="ID"
+                       constraintName="SPREE_CONFIGURATION_PK"/>
+
+        <createIndex indexName="IDX_SPREE_CONFIGURATION_NAME" tableName="SPREE_CONFIGURATION">
+            <column name="NAME"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="alter-user-entity-email-length" author="Markus Dahm">
+        <modifyDataType
+                tableName="USER_ENTITY"
+                columnName="EMAIL"
+                newDataType="VARCHAR(1024)"/>
+
+        <modifyDataType
+                tableName="USER_ENTITY"
+                columnName="EMAIL_CONSTRAINT"
+                newDataType="VARCHAR(1024)"/>
+    </changeSet>
+
+    <changeSet id="alter-client-entity-secret-length" author="Markus Dahm">
+        <modifyDataType
+                tableName="CLIENT"
+                columnName="SECRET"
+                newDataType="VARCHAR(1024)"/>
+    </changeSet>
+</databaseChangeLog>

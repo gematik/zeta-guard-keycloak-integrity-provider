@@ -1,0 +1,132 @@
+stages:
+  - build
+  - deploy
+  - release
+
+# Avoid duplicate pipelines: for a branch with an open merge request, only the
+# merge request pipeline is created, not an additional branch pipeline.
+workflow:
+  rules:
+    - if: "$CI_PIPELINE_SOURCE == 'merge_request_event'"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    # Tags: only release versions (Maven/SemVer, e.g. 1.0.0 or 1.0.0-RC1) create a pipeline.
+    - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+default:
+  image: $CI_REGISTRY/zeta/devops/ci-images/maven:3.9-eclipse-temurin-21-zeta-0
+  tags: [ zeta ]
+  cache:
+    paths:
+      - .m2/repository
+
+  services:
+    - name: $CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/docker:25.0.5-dind
+      alias: docker
+      variables:
+        HEALTHCHECK_TCP_PORT: "2376"
+
+.rules_mr_default:
+  rules:
+    - if: "$CI_PIPELINE_SOURCE == 'merge_request_event'"
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: on_success
+    - when: never
+
+.rules_tags:
+  rules:
+    # Nur Release-Tags im Maven-/SemVer-Format (1.0.0, optional 1.0.0-RC1) lösen ein Release aus.
+    - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/
+      when: on_success
+    - when: never
+
+variables:
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: /certs
+  DOCKER_CERT_PATH: $DOCKER_TLS_CERTDIR/client
+  DOCKER_TLS_VERIFY: "1"
+  MAVEN_REPOSITORY: gitlab::$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/maven
+  LOCAL_KEYCHAIN_GENERATOR_IMAGE_NAME: zeta/zeta-guard/vau/keychain-generator
+  HSM_SIM_IMAGE: $CI_REGISTRY/zeta/zeta-guard/ngx_pep/hsm_sim
+  HSM_SIM_TAG: main
+  MAVEN_CLI_OPTS: >-
+    --no-transfer-progress
+    --errors
+    --fail-at-end
+    --show-version
+    --settings ./ci_settings.xml
+    -P keychain-generator
+
+  MAVEN_DEPLOY_OPTS: >-
+    -DaltDeploymentRepository=$MAVEN_REPOSITORY -DaltReleaseDeploymentRepository=$MAVEN_REPOSITORY
+    -DskipTests -DskipITs
+    -Dmaven.install.skip=true
+
+  MAVEN_OPTS: >-
+    -Dstyle.color=always
+    -Djansi.passthrough=true
+    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+    -Dhttps.protocols=TLSv1.2
+    -Djava.awt.headless=true
+
+build:
+  stage: build
+  rules:
+    - when: on_success
+  script:
+    - |
+      printf "🛠️ Executing mvn %s %s clean install\n" "$MAVEN_CLI_OPTS"
+    
+      mvn $MAVEN_CLI_OPTS clean install
+
+  before_script: |
+    if [ -z "${CI_API_V4_URL}" ]; then
+        echo "ERROR: CI_API_V4_URL is not set. Please define it in CI/CD settings."
+        exit 1
+    else
+        printf "CI_API_V4_URL → »%s«\n" "$CI_API_V4_URL"
+        printf "MAVEN_REPOSITORY → »%s«\n" "$MAVEN_REPOSITORY"
+    fi
+
+    echo "🛂 Executing docker login..."
+    printf "%s" "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login "$CI_DEPENDENCY_PROXY_SERVER" -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin
+    printf "%s" "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+
+maven-snapshot-deploy:
+  stage: deploy
+  script: |
+    mvn $MAVEN_CLI_OPTS $MAVEN_DEPLOY_OPTS deploy
+  before_script: |
+    printf "🛠️ Executing mvn »%s« »%s« deploy\n" "$MAVEN_CLI_OPTS" "$MAVEN_DEPLOY_OPTS"
+  rules:
+    - !reference [ .rules_mr_default, rules ]
+
+maven-release:
+  stage: release
+  script: |
+    mvn versions:set -DnewVersion=${CI_COMMIT_TAG} -DgenerateBackupPoms=false
+    mvn $MAVEN_CLI_OPTS $MAVEN_DEPLOY_OPTS deploy
+
+    export IMAGE="$CI_REGISTRY_IMAGE/keychain-generator:$CI_COMMIT_TAG"
+
+    printf "🏷 Executing docker tag %s ➡ %s\n" "$LOCAL_KEYCHAIN_GENERATOR_IMAGE_NAME" "$IMAGE"
+    docker tag $LOCAL_KEYCHAIN_GENERATOR_IMAGE_NAME "$IMAGE"
+
+    printf "🫷 Executing docker push %s\n" "$IMAGE"
+    docker push "$IMAGE"
+  before_script: |
+    printf "🛂 Executing docker login...\n"
+    printf "%s" "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login "$CI_DEPENDENCY_PROXY_SERVER" -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin
+    printf "%s" "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+
+    if ! printf "%s" "$CI_COMMIT_TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+        echo "ERROR: tag »$CI_COMMIT_TAG« is not a valid Maven release version (e.g. 1.0.0)."
+        exit 1
+    fi
+    printf "🛠️ Executing version set and mvn »%s« »%s« deploy\n" "$MAVEN_CLI_OPTS" "$MAVEN_DEPLOY_OPTS"
+  rules:
+    - !reference [ .rules_tags, rules ]
